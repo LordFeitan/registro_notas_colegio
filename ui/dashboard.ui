@@ -228,7 +228,7 @@ SYSTEM</string>
        <item>
         <widget class="QLabel" name="userLabel">
          <property name="text">
-          <string>Prof. George</string>
+          <string>GRUPO 1</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -281,8 +281,6 @@ SYSTEM</string>
           <property name="bottomMargin">
            <number>0</number>
           </property>
-          
-          <!-- CARD 1: ESTUDIANTES -->
           <item>
            <widget class="QFrame" name="cardEstudiantes">
             <property name="styleSheet">
@@ -331,8 +329,6 @@ QLabel#lblTitEstudiantes {
             </layout>
            </widget>
           </item>
-
-          <!-- CARD 2: CURSOS -->
           <item>
            <widget class="QFrame" name="cardCursos">
             <property name="styleSheet">
@@ -381,8 +377,6 @@ QLabel#lblTitCursos {
             </layout>
            </widget>
           </item>
-
-          <!-- CARD 3: PROMEDIO -->
           <item>
            <widget class="QFrame" name="cardPromedio">
             <property name="styleSheet">
@@ -431,8 +425,6 @@ QLabel#lblTitPromedio {
             </layout>
            </widget>
           </item>
-
-          <!-- CARD 4: RIESGO -->
           <item>
            <widget class="QFrame" name="cardRiesgo">
             <property name="styleSheet">
