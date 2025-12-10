@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FormNotas</class>
+ <widget class="QWidget" name="FormNotas">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Registro de Notas</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget {
+    background-color: #f5f6fa;
+    font-family: 'Segoe UI';
+}
+QLabel {
+    color: #2c3e50;
+    font-size: 14px;
+}
+QLineEdit, QComboBox, QSpinBox {
+    padding: 8px;
+    border: 1px solid #dcdde1;
+    border-radius: 4px;
+    background-color: white;
+}
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #2980b9;
+}
+QTableWidget {
+    background-color: white;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    gridline-color: #ecf0f1;
+}
+QHeaderView::section {
+    background-color: #ecf0f1;
+    padding: 5px;
+    border: none;
+    font-weight: bold;
+    color: #7f8c8d;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+   <property name="leftMargin">
+    <number>30</number>
+   </property>
+   <property name="topMargin">
+    <number>30</number>
+   </property>
+   <property name="rightMargin">
+    <number>30</number>
+   </property>
+   <property name="bottomMargin">
+    <number>30</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="labelTitle">
+     <property name="font">
+      <font>
+       <pointsize>20</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Registro de Calificaciones</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="frameInput">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="horizontalSpacing">
+       <number>20</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>15</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelCurso">
+        <property name="text">
+         <string>Curso:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboCurso">
+        <item>
+         <property name="text">
+          <string>Matemáticas</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Historia</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Ciencias</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="labelEstudiante">
+        <property name="text">
+         <string>Estudiante (ID):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLineEdit" name="inputEstudianteID">
+        <property name="placeholderText">
+         <string>Ej. 001</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelNota">
+        <property name="text">
+         <string>Nota (0-20):</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="spinNota">
+        <property name="maximum">
+         <number>20</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2" colspan="2">
+       <widget class="QPushButton" name="btnRegistrar">
+        <property name="text">
+         <string>Registrar Nota</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="tableNotas">
+     <property name="columnCount">
+      <number>3</number>
+     </property>
+     <column>
+      <property name="text">
+       <string>ID Estudiante</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Curso</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Nota</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnGuardarCSV">
+       <property name="styleSheet">
+        <string notr="true">background-color: #2ecc71;</string>
+       </property>
+       <property name="text">
+        <string>Guardar en Archivo</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
