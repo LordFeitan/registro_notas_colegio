@@ -14,105 +14,115 @@ from PyQt6 import uic
 from model.estudiante import Estudiante
 from data.data_manager import DataManager
 
+# ==========================================
+# CLASES DE VENTANAS
+# ==========================================
+
 class MainApp(QMainWindow):
-    def __init__(self):
+    def __init__(self, db_manager):
         super().__init__()
-        # Cargar la interfaz principal directamente desde el archivo .ui
         uic.loadUi("ui/dashboard.ui", self)
         
-        # Inicializar DataManager
-        self.db = DataManager("notas_db.txt")
+        self.db = db_manager
         
-        # Inicializar Grafico ANTES de cargar datos
-        self.grafico = GraphWidget()
-        if self.statsFrame.layout().count() > 0:
-             item = self.statsFrame.layout().takeAt(0)
-             if item.widget(): item.widget().deleteLater()
-        self.statsFrame.layout().addWidget(self.grafico)
+        # Conectar botones del Sidebar (Menu)
+        self.btnEstudiantes.clicked.connect(self.abrir_registro_estudiantes)
+        self.btnCursos.clicked.connect(self.abrir_gestion_cursos)
+        self.btnMatricula.clicked.connect(self.abrir_matricula)
+        self.btnNotas.clicked.connect(self.abrir_notas)
+        self.btnReportes.clicked.connect(self.mostrar_reportes) # Placeholder
+        self.btnAsistencia.clicked.connect(self.abrir_asistencia)
         
-        # Conectar botones del Dashboard a funciones
-        self.btnNotas.clicked.connect(self.abrir_ventana_notas)
-        self.btnAsistencia.clicked.connect(self.abrir_ventana_asistencia)
-        self.btnEstudiantes.clicked.connect(self.abrir_ventana_estudiantes)
-        self.btnCursos.clicked.connect(self.abrir_ventana_cursos)
-        self.btnMatricula.clicked.connect(self.abrir_ventana_matricula)
-        
-        # Cargar datos iniciales en el Dashboard
+        # Cargar datos resumen (Dashboard)
         self.cargar_resumen_dashboard()
-        
-        # Referencias a sub-ventanas
-        self.ventana_notas = None
-        self.ventana_asistencia = None
-        self.ventana_estudiantes = None
-        self.ventana_cursos = None
-        self.ventana_matricula = None
 
     def cargar_resumen_dashboard(self):
-        """Carga las ultimas notas registradas en la tabla del dashboard"""
+        """Carga KPIs y tabla de últimas notas"""
+        
+        # 1. Total Estudiantes
+        estudiantes = self.db.obtener_estudiantes(activos=True)
+        self.lblValEstudiantes.setText(str(len(estudiantes)))
+        
+        # 2. Total Cursos
+        cursos = self.db.obtener_cursos()
+        self.lblValCursos.setText(str(len(cursos)))
+        
+        # 3. Promedio General y Riesgo
         notas = self.db.obtener_todas_las_notas()
-        # Tomar solo las ultimas 5 para mostrar "Recientes"
-        ultimas_notas = notas[-5:] if notas else []
-        
-        # El nombre del widget en dashboard.ui es 'tableWidget'
+        if notas:
+            promedios = [float(n['promedio']) for n in notas if n.get('promedio')]
+            if promedios:
+                general = sum(promedios) / len(promedios)
+                self.lblValPromedio.setText(f"{general:.2f}")
+                
+                # Alumnos en riesgo (promedio < 10.5)
+                riesgo = sum(1 for p in promedios if p < 10.5)
+                self.lblValRiesgo.setText(str(riesgo))
+            else:
+                self.lblValPromedio.setText("0.0")
+                self.lblValRiesgo.setText("0")
+        else:
+            self.lblValPromedio.setText("0.0")
+            self.lblValRiesgo.setText("0")
+
+        # 4. Tabla Ultimas Calificaciones
         self.tableWidget.setRowCount(0)
-        
-        for row_idx, data in enumerate(ultimas_notas):
-            self.tableWidget.insertRow(row_idx)
-            self.tableWidget.setItem(row_idx, 0, QTableWidgetItem(data['id']))
-            self.tableWidget.setItem(row_idx, 1, QTableWidgetItem(data['nombre']))
-            self.tableWidget.setItem(row_idx, 2, QTableWidgetItem(data['curso']))
+        # Mostrar ultimas 10
+        for i, nota in enumerate(reversed(notas[-10:])): 
+            self.tableWidget.insertRow(i)
+            self.tableWidget.setItem(i, 0, QTableWidgetItem(nota['id']))
+            self.tableWidget.setItem(i, 1, QTableWidgetItem(nota['nombre']))
+            self.tableWidget.setItem(i, 2, QTableWidgetItem(nota['curso']))
             
-            # Columna estado (simulada basada en promedio)
-            # data['nota'] es el promedio en el nuevo schema
+            # Formatear notas a 1 decimal
             try:
-                nota_val = float(data.get('promedio', 0))
+                n1 = f"{float(nota.get('n1', 0)):.1f}"
+                n2 = f"{float(nota.get('n2', 0)):.1f}"
+                n3 = f"{float(nota.get('n3', 0)):.1f}"
+                prom = f"{float(nota.get('promedio', 0)):.1f}"
+                val_prom = float(nota.get('promedio', 0))
             except ValueError:
-                nota_val = 0.0
+                n1, n2, n3, prom = "0.0", "0.0", "0.0", "0.0"
+                val_prom = 0.0
+
+            self.tableWidget.setItem(i, 3, QTableWidgetItem(n1))
+            self.tableWidget.setItem(i, 4, QTableWidgetItem(n2))
+            self.tableWidget.setItem(i, 5, QTableWidgetItem(n3))
+            self.tableWidget.setItem(i, 6, QTableWidgetItem(prom))
+
+            estado = "Aprobado" if val_prom >= 10.5 else "Desaprobado"
+            item_estado = QTableWidgetItem(estado)
+            
+            if estado == "Desaprobado":
+                item_estado.setForeground(QColor("red"))
+            else:
+                item_estado.setForeground(QColor("green"))
                 
-            estado = "Aprobado" if nota_val >= 10.5 else "Desaprobado"
-            self.tableWidget.setItem(row_idx, 3, QTableWidgetItem(f"{estado} ({nota_val})"))
+            self.tableWidget.setItem(i, 7, item_estado)
 
-        # Calcular promedios para el grafico
-        self.actualizar_grafico(notas)
+    def abrir_registro_estudiantes(self):
+        self.ventana_estudiantes = VentanaRegistroEstudiantes(self.db)
+        self.ventana_estudiantes.show()
 
-    def actualizar_grafico(self, notas):
-        if not notas:
-            return
-            
-        cursos_notas = {}
-        # Agrupar notas por curso
-        for registro in notas:
-            curso = registro['curso']
-            try:
-                # Usamos el promedio
-                nota = float(registro.get('promedio', 0))
-            except ValueError:
-                nota = 0.0
-                
-            if curso not in cursos_notas:
-                cursos_notas[curso] = []
-            cursos_notas[curso].append(nota)
-            
-        # Calcular promedio general por curso
-        data_grafico = {}
-        for curso, lista_notas in cursos_notas.items():
-            promedio = sum(lista_notas) / len(lista_notas)
-            data_grafico[curso] = promedio
-            
-        self.grafico.plot_grades(data_grafico)
+    def abrir_gestion_cursos(self):
+        self.ventana_cursos = VentanaGestionCursos(self.db)
+        self.ventana_cursos.show()
 
-    def abrir_ventana_notas(self):
+    def abrir_matricula(self):
+        self.ventana_matricula = VentanaMatricula(self.db)
+        self.ventana_matricula.show()
+    
+    def abrir_notas(self):
         self.ventana_notas = VentanaNotas(self.db)
-        # Recargar dashboard al cerrar (opcional, aqui simple)
         self.ventana_notas.destroyed.connect(self.cargar_resumen_dashboard)
         self.ventana_notas.show()
 
-    def abrir_ventana_asistencia(self):
+    def abrir_asistencia(self):
         self.ventana_asistencia = VentanaAsistencia(self.db)
         self.ventana_asistencia.show()
 
-    def abrir_ventana_estudiantes(self):
-        self.ventana_estudiantes = VentanaRegistroEstudiantes(self.db)
+    def mostrar_reportes(self):
+        QMessageBox.information(self, "Reportes", "Módulo de Reportes en construcción.")
         self.ventana_estudiantes.show()
 
     def abrir_ventana_cursos(self):
@@ -348,10 +358,15 @@ class VentanaGestionCursos(QWidget):
         self.cargar_tabla()
         
     def registrar_curso(self):
-        codigo = self.inputCodigo.text().strip()
+        # 1. Validar y Formatear Entradas
+        codigo = self.inputCodigo.text().strip().upper() # Codigo siempre mayus
         nombre = self.inputNombre.text().strip()
         profesor = self.inputProfesor.text().strip()
         creditos = self.spinCreditos.value()
+        
+        # Capitalizar nombre y profesor (Titulo) para consistencia
+        nombre = " ".join([p.capitalize() for p in nombre.split()])
+        profesor = " ".join([p.capitalize() for p in profesor.split()])
         
         if not codigo or not nombre or not profesor:
              QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios")
@@ -771,6 +786,7 @@ class GraphWidget(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainApp()
+    db_manager = DataManager("notas_db.txt")
+    window = MainApp(db_manager)
     window.show()
     sys.exit(app.exec())

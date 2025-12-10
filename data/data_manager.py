@@ -311,7 +311,7 @@ class DataManager:
         except IOError:
             return False
 
-    def obtener_estudiantes(self):
+    def obtener_estudiantes(self, activos=False):
         data = []
         if not os.path.exists(self.archivo_estudiantes):
             return data
@@ -335,7 +335,11 @@ class DataManager:
                 if len(partes) >= 7: est["activo"] = (partes[6].strip() == "1")
                 
                 if est["id"]: # Solo agregar si tiene ID
-                    data.append(est)
+                    if activos:
+                        if est["activo"]:
+                            data.append(est)
+                    else:
+                        data.append(est)
                     
         return data
 

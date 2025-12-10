@@ -264,32 +264,221 @@ SYSTEM</string>
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="statsFrame">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>200</height>
-          </size>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <widget class="QWidget" name="kpiContainer" native="true">
+         <layout class="QHBoxLayout" name="kpiLayout">
           <property name="spacing">
            <number>20</number>
           </property>
-          <!-- Placeholder for dynamic charts -->
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          
+          <!-- CARD 1: ESTUDIANTES -->
           <item>
-           <widget class="QLabel" name="label_placeholder">
-            <property name="text">
-             <string>Gráficos Estadísticos (Dinámicos)</string>
+           <widget class="QFrame" name="cardEstudiantes">
+            <property name="styleSheet">
+             <string notr="true">QFrame {
+    background-color: white;
+    border-radius: 10px;
+    border-left: 5px solid #3498db;
+}
+QLabel#lblValEstudiantes {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+QLabel#lblTitEstudiantes {
+    color: #7f8c8d;
+    font-size: 14px;
+}</string>
             </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
             </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QVBoxLayout" name="vbox1">
+             <item>
+              <widget class="QLabel" name="lblValEstudiantes">
+               <property name="text">
+                <string>0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTitEstudiantes">
+               <property name="text">
+                <string>Total Estudiantes</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+
+          <!-- CARD 2: CURSOS -->
+          <item>
+           <widget class="QFrame" name="cardCursos">
+            <property name="styleSheet">
+             <string notr="true">QFrame {
+    background-color: white;
+    border-radius: 10px;
+    border-left: 5px solid #2ecc71;
+}
+QLabel#lblValCursos {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+QLabel#lblTitCursos {
+    color: #7f8c8d;
+    font-size: 14px;
+}</string>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QVBoxLayout" name="vbox2">
+             <item>
+              <widget class="QLabel" name="lblValCursos">
+               <property name="text">
+                <string>0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTitCursos">
+               <property name="text">
+                <string>Total Cursos</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+
+          <!-- CARD 3: PROMEDIO -->
+          <item>
+           <widget class="QFrame" name="cardPromedio">
+            <property name="styleSheet">
+             <string notr="true">QFrame {
+    background-color: white;
+    border-radius: 10px;
+    border-left: 5px solid #f1c40f;
+}
+QLabel#lblValPromedio {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+QLabel#lblTitPromedio {
+    color: #7f8c8d;
+    font-size: 14px;
+}</string>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QVBoxLayout" name="vbox3">
+             <item>
+              <widget class="QLabel" name="lblValPromedio">
+               <property name="text">
+                <string>0.0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTitPromedio">
+               <property name="text">
+                <string>Promedio General</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+
+          <!-- CARD 4: RIESGO -->
+          <item>
+           <widget class="QFrame" name="cardRiesgo">
+            <property name="styleSheet">
+             <string notr="true">QFrame {
+    background-color: white;
+    border-radius: 10px;
+    border-left: 5px solid #e74c3c;
+}
+QLabel#lblValRiesgo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #c0392b;
+}
+QLabel#lblTitRiesgo {
+    color: #7f8c8d;
+    font-size: 14px;
+}</string>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QVBoxLayout" name="vbox4">
+             <item>
+              <widget class="QLabel" name="lblValRiesgo">
+               <property name="text">
+                <string>0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTitRiesgo">
+               <property name="text">
+                <string>Alumnos en Riesgo</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
          </layout>
@@ -311,7 +500,7 @@ SYSTEM</string>
        <item>
         <widget class="QTableWidget" name="tableWidget">
          <property name="columnCount">
-          <number>4</number>
+          <number>8</number>
          </property>
          <column>
           <property name="text">
@@ -326,6 +515,26 @@ SYSTEM</string>
          <column>
           <property name="text">
            <string>Curso</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Nota 1</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Nota 2</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Nota 3</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Promedio</string>
           </property>
          </column>
          <column>
