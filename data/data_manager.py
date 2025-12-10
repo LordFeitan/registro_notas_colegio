@@ -21,7 +21,7 @@ class DataManager:
     def _inicializar_archivo_notas(self):
         if not os.path.exists(self.archivo_notas):
             with open(self.archivo_notas, 'w', encoding='utf-8') as f:
-                f.write("ID_ESTUDIANTE|NOMBRE_ESTUDIANTE|CURSO|NOTA\n")
+                f.write("ID_ESTUDIANTE|CODIGO_CURSO|NOTA1|NOTA2|NOTA3|PROMEDIO\n")
 
     def _inicializar_archivo_matriculas(self):
         if not os.path.exists(self.archivo_matriculas):
@@ -31,13 +31,14 @@ class DataManager:
     def _inicializar_archivo_cursos(self):
         if not os.path.exists(self.archivo_cursos):
             with open(self.archivo_cursos, 'w', encoding='utf-8') as f:
-                f.write("CODIGO|NOMBRE\n")
+                f.write("CODIGO|NOMBRE|PROFESOR|CREDITOS\n")
 
     # --- CURSOS ---
-    def registrar_curso(self, codigo, nombre):
+    # --- CURSOS ---
+    def registrar_curso(self, codigo, nombre, profesor, creditos):
         try:
             with open(self.archivo_cursos, 'a', encoding='utf-8') as f:
-                linea = f"{codigo}|{nombre}\n"
+                linea = f"{codigo}|{nombre}|{profesor}|{creditos}\n"
                 f.write(linea)
             return True
         except IOError:
@@ -51,16 +52,65 @@ class DataManager:
             for i, linea in enumerate(f):
                 if i == 0: continue
                 partes = linea.strip().split('|')
-                if len(partes) >= 2:
-                    data.append({"codigo": partes[0], "nombre": partes[1]})
+                
+                curso = {"codigo": "", "nombre": "", "profesor": "", "creditos": ""}
+                
+                if len(partes) >= 1: curso["codigo"] = partes[0]
+                if len(partes) >= 2: curso["nombre"] = partes[1]
+                if len(partes) >= 3: curso["profesor"] = partes[2]
+                if len(partes) >= 4: curso["creditos"] = partes[3]
+                
+                if curso["codigo"]:
+                    data.append(curso)
         return data
+
+    def actualizar_curso(self, codigo, nombre, profesor, creditos):
+        cursos = self.obtener_cursos()
+        encontrado = False
+        for c in cursos:
+            if c['codigo'] == codigo:
+                c['nombre'] = nombre
+                c['profesor'] = profesor
+                c['creditos'] = creditos
+                encontrado = True
+                break
+        
+        if not encontrado: return False
+        
+        try:
+            with open(self.archivo_cursos, 'w', encoding='utf-8') as f:
+                f.write("CODIGO|NOMBRE|PROFESOR|CREDITOS\n")
+                for c in cursos:
+                    linea = f"{c['codigo']}|{c['nombre']}|{c['profesor']}|{c['creditos']}\n"
+                    f.write(linea)
+            return True
+        except IOError:
+            return False
+
+    def eliminar_curso(self, codigo):
+        cursos = self.obtener_cursos()
+        filtrados = [c for c in cursos if c['codigo'] != codigo]
+        
+        if len(cursos) == len(filtrados): return False # No existia
+        
+        try:
+            with open(self.archivo_cursos, 'w', encoding='utf-8') as f:
+                f.write("CODIGO|NOMBRE|PROFESOR|CREDITOS\n")
+                for c in filtrados:
+                    linea = f"{c['codigo']}|{c['nombre']}|{c['profesor']}|{c['creditos']}\n"
+                    f.write(linea)
+            return True
+        except IOError:
+            return False
 
     def buscar_cursos(self, termino):
         termino = termino.lower().strip()
         todos = self.obtener_cursos()
         resultados = []
         for c in todos:
-            if termino in c['codigo'].lower() or termino in c['nombre'].lower():
+            if (termino in c['codigo'].lower() or 
+                termino in c['nombre'].lower() or 
+                termino in c['profesor'].lower()):
                 resultados.append(c)
         return resultados
 
@@ -176,6 +226,19 @@ class DataManager:
                         "fecha": fecha
                     })
         return data
+
+    def obtener_estudiantes_por_curso(self, cod_curso):
+        """Devuelve los objetos estudiante matriculados en un curso."""
+        ids_permitidos = []
+        if os.path.exists(self.archivo_matriculas):
+            with open(self.archivo_matriculas, 'r', encoding='utf-8') as f:
+                for linea in f:
+                    partes = linea.strip().split('|')
+                    if len(partes) >= 2 and partes[1] == cod_curso:
+                        ids_permitidos.append(partes[0])
+        
+        todos = self.obtener_estudiantes()
+        return [est for est in todos if est['id'] in ids_permitidos]
 
     def _inicializar_archivo_estudiantes(self):
         """Crea el archivo de estudiantes con cabeceras si no existe."""
@@ -315,67 +378,47 @@ class DataManager:
 
         return data
 
-    def registrar_nota(self, id_est, nombre, curso, nota):
+    def registrar_nota(self, id_est, cod_curso, n1, n2, n3):
         """
-        Guarda una nueva nota en el archivo de texto (Modo 'a' - Append).
+        Guarda las 3 notas y el promedio.
         """
+        promedio = round((n1 + n2 + n3) / 3, 2)
         try:
             with open(self.archivo_notas, 'a', encoding='utf-8') as f:
-                linea = f"{id_est}|{nombre}|{curso}|{nota}\n"
+                linea = f"{id_est}|{cod_curso}|{n1}|{n2}|{n3}|{promedio}\n"
                 f.write(linea)
             return True
         except IOError as e:
             print(f"Error al guardar nota: {e}")
             return False
 
-    def buscar_notas_por_estudiante(self, id_busqueda):
-        """
-        Busca todas las notas de un estudiante usando REGEX.
-        Retorna lista de diccionarios.
-        """
-        resultados = []
-        # Regex: Inicio de linea (^), ID exacto, seguido de pipe (|), y resto de linea (.*)
-        patron = re.compile(rf"^{re.escape(id_busqueda)}\|.*$", re.MULTILINE)
-
-        if not os.path.exists(self.archivo_notas):
-            return []
-
-        try:
-            with open(self.archivo_notas, 'r', encoding='utf-8') as f:
-                contenido = f.read()
-                # Uso de Regex para encontrar coincidencias
-                coincidencias = patron.findall(contenido)
-                
-                for linea in coincidencias:
-                    # Parsear la linea pipe-separated para devolver objetos limpios
-                    partes = linea.strip().split('|')
-                    if len(partes) >= 4:
-                        resultados.append({
-                            "id": partes[0],
-                            "nombre": partes[1],
-                            "curso": partes[2],
-                            "nota": partes[3]
-                        })
-        except Exception as e:
-            print(f"Error al leer archivo: {e}")
-        
-        return resultados
-
     def obtener_todas_las_notas(self):
-        """Lee todo el archivo y retorna una lista de diccionarios."""
+        """Lee todo el archivo y retorna una lista de diccionarios, enriqueciendo con nombres."""
         data = []
         if not os.path.exists(self.archivo_notas):
             return data
             
+        # Mapeos para mostrar nombres en lugar de IDs
+        estudiantes = {e['id']: f"{e['nombre']} {e['apellido']}" for e in self.obtener_estudiantes()}
+        cursos = {c['codigo']: c['nombre'] for c in self.obtener_cursos()}
+
         with open(self.archivo_notas, 'r', encoding='utf-8') as f:
             for i, linea in enumerate(f):
                 if i == 0: continue # Saltar header
                 partes = linea.strip().split('|')
-                if len(partes) >= 4:
+                if len(partes) >= 6:
+                    id_est = partes[0]
+                    cod_curso = partes[1]
+                    
                     data.append({
-                        "id": partes[0],
-                        "nombre": partes[1],
-                        "curso": partes[2],
-                        "nota": partes[3]
+                        "id": id_est,
+                        "nombre": estudiantes.get(id_est, id_est),
+                        "curso": cursos.get(cod_curso, cod_curso),
+                        "cod_curso": cod_curso,
+                        "n1": partes[2],
+                        "n2": partes[3],
+                        "n3": partes[4],
+                        "promedio": partes[5],
+                        "nota": partes[5] # Backward compatibility for Dashboard
                     })
         return data

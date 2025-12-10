@@ -1,6 +1,7 @@
-CUR-001|Matemática Básica
-CUR-002|Programación Orientada a Objetos
-CUR-003|Base de Datos
-CUR-004|Desarrollo Web
-CUR-005|Estadística
-CUR-006|CURSO DE IA
+CODIGO|NOMBRE|PROFESOR|CREDITOS
+CUR-002|Programación Orientada a Objetos|Ruiz Fernandez|3
+CUR-003|Base de Datos|Navas Sotelo|2
+CUR-004|Desarrollo Web|Marlon Style|3
+CUR-005|Estadística|Shaka Mallqui|3
+CUR-006|CURSO DE IA|Arrunategui Cucho|5
+CUR-007|Matematica 1|Juan Diego Flores|4

@@ -62,10 +62,15 @@ class MainApp(QMainWindow):
             self.tableWidget.setItem(row_idx, 1, QTableWidgetItem(data['nombre']))
             self.tableWidget.setItem(row_idx, 2, QTableWidgetItem(data['curso']))
             
-            # Columna estado (simulada basada en nota)
-            nota_val = int(data['nota'])
-            estado = "Aprobado" if nota_val >= 11 else "Desaprobado"
-            self.tableWidget.setItem(row_idx, 3, QTableWidgetItem(estado))
+            # Columna estado (simulada basada en promedio)
+            # data['nota'] es el promedio en el nuevo schema
+            try:
+                nota_val = float(data.get('promedio', 0))
+            except ValueError:
+                nota_val = 0.0
+                
+            estado = "Aprobado" if nota_val >= 10.5 else "Desaprobado"
+            self.tableWidget.setItem(row_idx, 3, QTableWidgetItem(f"{estado} ({nota_val})"))
 
         # Calcular promedios para el grafico
         self.actualizar_grafico(notas)
@@ -78,12 +83,17 @@ class MainApp(QMainWindow):
         # Agrupar notas por curso
         for registro in notas:
             curso = registro['curso']
-            nota = int(registro['nota'])
+            try:
+                # Usamos el promedio
+                nota = float(registro.get('promedio', 0))
+            except ValueError:
+                nota = 0.0
+                
             if curso not in cursos_notas:
                 cursos_notas[curso] = []
             cursos_notas[curso].append(nota)
             
-        # Calcular promedio
+        # Calcular promedio general por curso
         data_grafico = {}
         for curso, lista_notas in cursos_notas.items():
             promedio = sum(lista_notas) / len(lista_notas)
@@ -319,28 +329,115 @@ class VentanaGestionCursos(QWidget):
         uic.loadUi("ui/form_gestion_cursos.ui", self)
         self.db = db_manager
         
+        # Conexiones Eventos
         self.btnGuardar.clicked.connect(self.registrar_curso)
         self.btnBuscar.clicked.connect(self.filtrar_cursos)
         self.inputBusqueda.textChanged.connect(self.filtrar_cursos)
         
+        # Nuevos botones
+        self.btnLimpiar.clicked.connect(self.limpiar_formulario)
+        self.btnEditar.clicked.connect(self.editar_seleccionado)
+        self.btnEliminar.clicked.connect(self.eliminar_seleccionado)
+        self.tableCursos.itemDoubleClicked.connect(self.cargar_curso_para_editar)
+        
+        # Configurar Tabla
+        self.tableCursos.setColumnCount(4)
+        self.tableCursos.setHorizontalHeaderLabels(["Código", "Nombre", "Profesor", "Créditos"])
+        self.tableCursos.horizontalHeader().setStretchLastSection(True)
+        
         self.cargar_tabla()
         
     def registrar_curso(self):
-        codigo = self.inputCodigo.text()
-        nombre = self.inputNombre.text()
+        codigo = self.inputCodigo.text().strip()
+        nombre = self.inputNombre.text().strip()
+        profesor = self.inputProfesor.text().strip()
+        creditos = self.spinCreditos.value()
         
-        if not codigo or not nombre:
-             QMessageBox.warning(self, "Error", "Complete todos los campos")
+        if not codigo or not nombre or not profesor:
+             QMessageBox.warning(self, "Error", "Complete todos los campos obligatorios")
              return
              
-        if self.db.registrar_curso(codigo, nombre):
-            QMessageBox.information(self, "Exito", "Curso registrado")
-            self.inputCodigo.clear()
-            self.inputNombre.clear()
-            self.cargar_tabla()
+        # Check if ID is ReadOnly - means we are EDITING
+        if self.inputCodigo.isReadOnly():
+            if self.db.actualizar_curso(codigo, nombre, profesor, creditos):
+                QMessageBox.information(self, "Exito", "Curso actualizado")
+                self.limpiar_formulario()
+                self.cargar_tabla()
+            else:
+                QMessageBox.critical(self, "Error", "Error al actualizar")
         else:
-            QMessageBox.critical(self, "Error", "Error al guardar")
+            # CREATE
+            # Check duplicate ID simple (optional or rely on DB)
+            if any(c['codigo'] == codigo for c in self.db.obtener_cursos()):
+                QMessageBox.warning(self, "Error", "El código de curso ya existe.")
+                return 
+
+            if self.db.registrar_curso(codigo, nombre, profesor, creditos):
+                QMessageBox.information(self, "Exito", "Curso registrado")
+                self.limpiar_formulario()
+                self.cargar_tabla()
+            else:
+                QMessageBox.critical(self, "Error", "Error al guardar")
+
+    def cargar_curso_para_editar(self, item):
+        row = item.row()
+        return self._cargar_desde_fila(row)
+
+    def editar_seleccionado(self):
+        row = self.tableCursos.currentRow()
+        if row >= 0:
+            self._cargar_desde_fila(row)
+        else:
+            QMessageBox.warning(self, "Aviso", "Seleccione un curso.")
+
+    def _cargar_desde_fila(self, row):
+        codigo = self.tableCursos.item(row, 0).text()
+        # Buscar objeto completo para tener profesor y creditos veraces (aunque esten en tabla)
+        curso = None
+        for c in self.db.obtener_cursos():
+            if c['codigo'] == codigo:
+                curso = c
+                break
+        
+        if curso:
+            self.inputCodigo.setText(curso['codigo'])
+            self.inputCodigo.setReadOnly(True) # Modificar clave primaria no permitido
+            self.inputNombre.setText(curso['nombre'])
+            self.inputProfesor.setText(curso.get('profesor', ''))
+            try:
+                self.spinCreditos.setValue(int(curso.get('creditos', 3)))
+            except:
+                self.spinCreditos.setValue(3)
+                
+            self.btnGuardar.setText("Actualizar Curso")
+
+    def eliminar_seleccionado(self):
+        row = self.tableCursos.currentRow()
+        if row >= 0:
+            codigo = self.tableCursos.item(row, 0).text()
+            nombre = self.tableCursos.item(row, 1).text()
             
+            confirm = QMessageBox.question(
+                self, "Confirmar", 
+                f"¿Eliminar curso {nombre} ({codigo})?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            
+            if confirm == QMessageBox.StandardButton.Yes:
+                self.db.eliminar_curso(codigo)
+                self.limpiar_formulario()
+                self.cargar_tabla()
+        else:
+             QMessageBox.warning(self, "Aviso", "Seleccione un curso.")
+    
+    def limpiar_formulario(self):
+        self.inputCodigo.clear()
+        self.inputCodigo.setReadOnly(False)
+        self.inputNombre.clear()
+        self.inputProfesor.clear()
+        self.spinCreditos.setValue(3)
+        self.btnGuardar.setText("Guardar Curso")
+
     def cargar_tabla(self):
         cursos = self.db.obtener_cursos()
         self.actualizar_tabla(cursos)
@@ -359,6 +456,8 @@ class VentanaGestionCursos(QWidget):
             self.tableCursos.insertRow(i)
             self.tableCursos.setItem(i, 0, QTableWidgetItem(c['codigo']))
             self.tableCursos.setItem(i, 1, QTableWidgetItem(c['nombre']))
+            self.tableCursos.setItem(i, 2, QTableWidgetItem(c.get('profesor', '')))
+            self.tableCursos.setItem(i, 3, QTableWidgetItem(str(c.get('creditos', ''))))
 
 
 class VentanaMatricula(QWidget):
@@ -424,53 +523,78 @@ class VentanaNotas(QWidget):
         uic.loadUi("ui/form_notas.ui", self)
         self.db = db_manager
         
-        # Cargar cursos dinamicos
-        self.cargar_combo_cursos()
-        
         # Configurar UI inicial
+        self.cargar_combos()
+        self.comboCurso.currentIndexChanged.connect(self.actualizar_combo_estudiantes)
         self.btnRegistrar.clicked.connect(self.registrar_nota)
         self.cargar_datos_tabla()
 
-    def cargar_combo_cursos(self):
+    def cargar_combos(self):
         self.comboCurso.clear()
+        # Cargar Cursos
         cursos = self.db.obtener_cursos()
-        if cursos:
-            for c in cursos:
-                self.comboCurso.addItem(c['nombre'])
+        for c in cursos:
+            self.comboCurso.addItem(c['nombre'], c['codigo'])
+            
+        # Trigger initial update
+        self.actualizar_combo_estudiantes()
+
+    def actualizar_combo_estudiantes(self):
+        self.comboEstudiante.clear()
+        idx = self.comboCurso.currentIndex()
+        if idx == -1: return
+        
+        cod_curso = self.comboCurso.itemData(idx)
+        
+        # Filtramos SOLO los matriculados
+        estudiantes = self.db.obtener_estudiantes_por_curso(cod_curso)
+        
+        if estudiantes:
+            self.comboEstudiante.setEnabled(True)
+            for est in estudiantes:
+                if est.get('activo', True):
+                    self.comboEstudiante.addItem(f"{est['nombre']} {est['apellido']} ({est['id']})", est['id'])
         else:
-            # Fallback si no hay cursos registrados aun
-            self.comboCurso.addItems(["Matemáticas", "Historia", "Ciencias", "Programación"])
+            self.comboEstudiante.addItem("No hay estudiantes matriculados", None)
+            self.comboEstudiante.setEnabled(False)
 
     def registrar_nota(self):
         # Obtener datos de la UI
-        curso_actual = self.comboCurso.currentText()
-        id_est = self.inputEstudianteID.text()
-        nota_valor = self.spinNota.value()
+        idx_curso = self.comboCurso.currentIndex()
+        idx_est = self.comboEstudiante.currentIndex()
         
-        if not id_est:
-            QMessageBox.warning(self, "Error", "Debe ingresar un ID de estudiante")
-            return
-
-        # Crear objeto Estudiante (POO)
-        est = Estudiante(id_est, "Nombre", "Desconocido", "Carrera X")
+        if idx_curso == -1 or idx_est == -1:
+             QMessageBox.warning(self, "Error", "Seleccione Curso y Estudiante")
+             return
+             
+        cod_curso = self.comboCurso.itemData(idx_curso)
+        id_est = self.comboEstudiante.itemData(idx_est)
         
-        if est.registrar_nota(curso_actual, nota_valor):
-            exito = self.db.registrar_nota(id_est, "Estudiante G.", curso_actual, nota_valor)
-            if exito:
-                QMessageBox.information(self, "Exito", "Nota registrada correctamente")
-                self.inputEstudianteID.clear()
-                self.cargar_datos_tabla()
-            else:
-                QMessageBox.critical(self, "Error", "No se pudo guardar en el archivo")
+        n1 = self.spinNota1.value()
+        n2 = self.spinNota2.value()
+        n3 = self.spinNota3.value()
+        
+        if self.db.registrar_nota(id_est, cod_curso, n1, n2, n3):
+            QMessageBox.information(self, "Exito", "Notas registradas correctamente")
+            # Reset spins
+            self.spinNota1.setValue(0)
+            self.spinNota2.setValue(0)
+            self.spinNota3.setValue(0)
+            self.cargar_datos_tabla()
+        else:
+            QMessageBox.critical(self, "Error", "No se pudo guardar en el archivo")
 
     def cargar_datos_tabla(self):
         self.tableNotas.setRowCount(0)
         notas_guardadas = self.db.obtener_todas_las_notas()
         for row_idx, data in enumerate(notas_guardadas):
             self.tableNotas.insertRow(row_idx)
-            self.tableNotas.setItem(row_idx, 0, QTableWidgetItem(data['id']))
+            self.tableNotas.setItem(row_idx, 0, QTableWidgetItem(data['nombre']))
             self.tableNotas.setItem(row_idx, 1, QTableWidgetItem(data['curso']))
-            self.tableNotas.setItem(row_idx, 2, QTableWidgetItem(data['nota']))
+            self.tableNotas.setItem(row_idx, 2, QTableWidgetItem(str(data['n1'])))
+            self.tableNotas.setItem(row_idx, 3, QTableWidgetItem(str(data['n2'])))
+            self.tableNotas.setItem(row_idx, 4, QTableWidgetItem(str(data['n3'])))
+            self.tableNotas.setItem(row_idx, 5, QTableWidgetItem(str(data['promedio'])))
 
 
 
