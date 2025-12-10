@@ -175,29 +175,31 @@ class DataManager:
         return None
 
     # --- MATRICULAS ---
-    def registrar_matricula(self, id_estudiante, cod_curso, fecha):
-        # Validar duplicados
-        if self.existe_matricula(id_estudiante, cod_curso):
-            return False, "El estudiante ya esta matriculado en este curso."
-            
-        try:
-            with open(self.archivo_matriculas, 'a', encoding='utf-8') as f:
-                linea = f"{id_estudiante}|{cod_curso}|{fecha}\n"
-                f.write(linea)
-            return True, "Matricula exitosa"
-        except IOError:
-            return False, "Error al escribir en archivo"
 
     def existe_matricula(self, id_est, cod_curso):
         if not os.path.exists(self.archivo_matriculas):
             return False
+            
         with open(self.archivo_matriculas, 'r', encoding='utf-8') as f:
-            for linea in f:
+            for i, linea in enumerate(f):
+                if i == 0: continue
                 partes = linea.strip().split('|')
                 if len(partes) >= 2:
                     if partes[0] == id_est and partes[1] == cod_curso:
                         return True
         return False
+
+    def registrar_matricula(self, id_est, cod_curso, fecha, periodo, estado):
+        if self.existe_matricula(id_est, cod_curso):
+             return False, "El estudiante ya está matriculado en este curso."
+             
+        try:
+            with open(self.archivo_matriculas, 'a', encoding='utf-8') as f:
+                linea = f"{id_est}|{cod_curso}|{fecha}|{periodo}|{estado}\n"
+                f.write(linea)
+            return True, "Matrícula exitosa"
+        except IOError as e:
+            return False, str(e)
 
     def obtener_matriculas(self):
         data = []
@@ -216,16 +218,51 @@ class DataManager:
                     id_est = partes[0]
                     cod_curso = partes[1]
                     fecha = partes[2]
+                    # Backward compatibility
+                    periodo = partes[3] if len(partes) > 3 else "2024-1"
+                    estado = partes[4] if len(partes) > 4 else "Matriculado"
                     
                     nombre_est = estudiantes.get(id_est, id_est)
                     nombre_curso = cursos.get(cod_curso, cod_curso)
                     
                     data.append({
+                        "id_est": id_est,
+                        "cod_curso": cod_curso,
                         "estudiante": nombre_est,
                         "curso": nombre_curso,
-                        "fecha": fecha
+                        "fecha": fecha,
+                        "periodo": periodo,
+                        "estado": estado
                     })
         return data
+
+    def eliminar_matricula(self, id_est, cod_curso):
+        matriculas = self.obtener_matriculas() # Esto nos da dicts enriquecidos, necesitamos leer raw mejor o re-escribir con cuidado
+        
+        # Leemos raw para escribir
+        lines_to_keep = []
+        header = None
+        
+        if not os.path.exists(self.archivo_matriculas): return False
+        
+        with open(self.archivo_matriculas, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            if not lines: return False
+            header = lines[0]
+            for line in lines[1:]:
+                parts = line.strip().split('|')
+                if len(parts) >= 2:
+                    if parts[0] == id_est and parts[1] == cod_curso:
+                        continue # Skip (delete)
+                lines_to_keep.append(line)
+                
+        try:
+            with open(self.archivo_matriculas, 'w', encoding='utf-8') as f:
+                f.write(header)
+                f.writelines(lines_to_keep)
+            return True
+        except IOError:
+            return False
 
     def obtener_estudiantes_por_curso(self, cod_curso):
         """Devuelve los objetos estudiante matriculados en un curso."""

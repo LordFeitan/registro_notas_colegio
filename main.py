@@ -6,8 +6,9 @@ import warnings
 # Suppress PyQt6 internal warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*sipPyTypeDict.*")
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem, QVBoxLayout
-from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView, QVBoxLayout
+from PyQt6.QtGui import QIcon, QPixmap, QColor
+from PyQt6.QtCore import Qt, QDate
 from PyQt6 import uic
 
 # Import models & data modules
@@ -254,6 +255,8 @@ class VentanaRegistroEstudiantes(QWidget):
              QMessageBox.warning(self, "Error", "La fecha de nacimiento debe ser anterior a hoy")
              return
 
+        nacimiento = fecha_birth.toString("yyyy-MM-dd")
+
         # LOGICA UPDATE VS SAVE
         if "Generado" in id_actual or not id_actual:
             # ES NUEVO
@@ -481,22 +484,29 @@ class VentanaMatricula(QWidget):
         uic.loadUi("ui/form_matricula.ui", self)
         self.db = db_manager
         
-        self.btnMatricular.clicked.connect(self.registrar_matricula)
-        
+        # UI Setup
+        from PyQt6.QtCore import QDate
+        from PyQt6.QtCore import Qt
+        self.dateFecha.setDate(QDate.currentDate())
         self.cargar_combos()
         self.cargar_tabla()
         
+        # Connections
+        self.btnMatricular.clicked.connect(self.registrar_matricula)
+        self.btnLimpiar.clicked.connect(self.limpiar_formulario)
+        self.btnEliminar.clicked.connect(self.eliminar_seleccionado)
+        self.inputBuscar.textChanged.connect(self.filtrar_tabla)
+
     def cargar_combos(self):
         self.comboEstudiante.clear()
         self.comboCurso.clear()
         
-        # Cargar estudiantes
-        estudiantes = self.db.obtener_estudiantes()
+        # Estudiantes
+        estudiantes = self.db.obtener_estudiantes(activos=True) # Filtramos activos
         for est in estudiantes:
-            # Guardamos ID en el data del item
             self.comboEstudiante.addItem(f"{est['nombre']} {est['apellido']} ({est['id']})", est['id'])
             
-        # Cargar cursos
+        # Cursos
         cursos = self.db.obtener_cursos()
         for cur in cursos:
             self.comboCurso.addItem(f"{cur['nombre']} ({cur['codigo']})", cur['codigo'])
@@ -511,11 +521,11 @@ class VentanaMatricula(QWidget):
             
         id_est = self.comboEstudiante.itemData(idx_est)
         cod_curso = self.comboCurso.itemData(idx_cur)
+        fecha = self.dateFecha.date().toString("yyyy-MM-dd")
+        periodo = self.comboPeriodo.currentText()
+        estado = self.comboEstado.currentText()
         
-        from PyQt6.QtCore import QDate
-        fecha = QDate.currentDate().toString("yyyy-MM-dd")
-        
-        exito, msg = self.db.registrar_matricula(id_est, cod_curso, fecha)
+        exito, msg = self.db.registrar_matricula(id_est, cod_curso, fecha, periodo, estado)
         if exito:
             QMessageBox.information(self, "Exito", msg)
             self.cargar_tabla()
@@ -527,9 +537,60 @@ class VentanaMatricula(QWidget):
         self.tableMatriculas.setRowCount(0)
         for i, m in enumerate(matriculas):
             self.tableMatriculas.insertRow(i)
-            self.tableMatriculas.setItem(i, 0, QTableWidgetItem(m['estudiante']))
-            self.tableMatriculas.setItem(i, 1, QTableWidgetItem(m['curso']))
+            # Guardamos ID y Curso ocultos para eliminar
+            item_est = QTableWidgetItem(m['estudiante'])
+            item_est.setData(Qt.ItemDataRole.UserRole, m['id_est'])
+            
+            item_cur = QTableWidgetItem(m['curso'])
+            item_cur.setData(Qt.ItemDataRole.UserRole, m['cod_curso'])
+            
+            self.tableMatriculas.setItem(i, 0, item_est)
+            self.tableMatriculas.setItem(i, 1, item_cur)
             self.tableMatriculas.setItem(i, 2, QTableWidgetItem(m['fecha']))
+            self.tableMatriculas.setItem(i, 3, QTableWidgetItem(m.get('periodo', '')))
+            self.tableMatriculas.setItem(i, 4, QTableWidgetItem(m.get('estado', '')))
+
+    def eliminar_seleccionado(self):
+        row = self.tableMatriculas.currentRow()
+        if row >= 0:
+            est_name = self.tableMatriculas.item(row, 0).text()
+            cur_name = self.tableMatriculas.item(row, 1).text()
+            
+            id_est = self.tableMatriculas.item(row, 0).data(Qt.ItemDataRole.UserRole)
+            cod_curso = self.tableMatriculas.item(row, 1).data(Qt.ItemDataRole.UserRole)
+            
+            response = QMessageBox.question(
+                self, "Confirmar", 
+                f"¿Eliminar matrícula de\n{est_name}\nen {cur_name}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            
+            if response == QMessageBox.StandardButton.Yes:
+                if self.db.eliminar_matricula(id_est, cod_curso):
+                    QMessageBox.information(self, "Exito", "Matrícula eliminada")
+                    self.cargar_tabla()
+                else:
+                    QMessageBox.critical(self, "Error", "No se pudo eliminar")
+        else:
+            QMessageBox.warning(self, "Aviso", "Seleccione una matrícula de la tabla.")
+
+    def limpiar_formulario(self):
+        self.comboEstudiante.setCurrentIndex(-1)
+        self.comboCurso.setCurrentIndex(-1)
+        from PyQt6.QtCore import QDate
+        self.dateFecha.setDate(QDate.currentDate())
+        self.comboPeriodo.setCurrentIndex(0)
+        self.comboEstado.setCurrentIndex(0)
+
+    def filtrar_tabla(self, texto):
+        texto = texto.lower().strip()
+        for i in range(self.tableMatriculas.rowCount()):
+            item_est = self.tableMatriculas.item(i, 0)
+            item_cur = self.tableMatriculas.item(i, 1)
+            
+            mostrar = (texto in item_est.text().lower() or 
+                       texto in item_cur.text().lower())
+            self.tableMatriculas.setRowHidden(i, not mostrar)
 
 
 class VentanaNotas(QWidget):
