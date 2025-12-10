@@ -229,6 +229,25 @@ class DataManager:
         except IOError:
             return False
 
+    def eliminar_estudiante(self, id_est):
+        """Elimina un estudiante por su ID."""
+        estudiantes = self.obtener_estudiantes()
+        estudiantes_filtrados = [e for e in estudiantes if e['id'] != id_est]
+        
+        if len(estudiantes) == len(estudiantes_filtrados):
+            return False # No se encontro
+            
+        try:
+            with open(self.archivo_estudiantes, 'w', encoding='utf-8') as f:
+                f.write("ID|NOMBRE|APELLIDO|CARRERA|NACIMIENTO|CORREO|ACTIVO\n")
+                for est in estudiantes_filtrados:
+                    activo_str = "1" if est.get('activo', True) else "0"
+                    linea = f"{est['id']}|{est['nombre']}|{est['apellido']}|{est['carrera']}|{est['nacimiento']}|{est['correo']}|{activo_str}\n"
+                    f.write(linea)
+            return True
+        except IOError:
+            return False
+
     def obtener_estudiantes(self):
         data = []
         if not os.path.exists(self.archivo_estudiantes):

@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 import warnings
@@ -131,6 +132,11 @@ class VentanaRegistroEstudiantes(QWidget):
         except AttributeError:
             pass
 
+        try:
+            self.btnEliminar.clicked.connect(self.eliminar_seleccionado)
+        except AttributeError:
+            print("Warning: btnEliminar not found in UI")
+
         # Nuevo boton limpiar (asegurate de haberlo agregado al UI o manejar error si no existe)
         try:
             self.btnLimpiar.clicked.connect(self.limpiar_formulario)
@@ -157,6 +163,28 @@ class VentanaRegistroEstudiantes(QWidget):
         else:
             QMessageBox.warning(self, "Aviso", "Seleccione un estudiante de la tabla para editar.")
 
+    def eliminar_seleccionado(self):
+        row = self.tableEstudiantes.currentRow()
+        if row >= 0:
+            id_est = self.tableEstudiantes.item(row, 0).text()
+            nombre = self.tableEstudiantes.item(row, 1).text()
+            
+            confirm = QMessageBox.question(
+                self, "Confirmar Eliminación",
+                f"¿Está seguro de eliminar al estudiante {nombre} (ID: {id_est})?\nEsta acción es irreversible.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            
+            if confirm == QMessageBox.StandardButton.Yes:
+                if self.db.eliminar_estudiante(id_est):
+                    QMessageBox.information(self, "Eliminado", "Estudiante eliminado correctamente.")
+                    self.limpiar_formulario()
+                    self.cargar_tabla()
+                else:
+                    QMessageBox.critical(self, "Error", "No se pudo eliminar el estudiante.")
+        else:
+            QMessageBox.warning(self, "Aviso", "Seleccione un estudiante de la tabla para eliminar.")
+
     def cargar_carreras(self):
         """Carga las carreras desde el txt al ComboBox"""
         self.comboCarrera.clear()
@@ -173,16 +201,30 @@ class VentanaRegistroEstudiantes(QWidget):
     def registrar_estudiante(self):
         # El ID ahora es read-only, pero si tiene texto, es edicion
         id_actual = self.inputID.text()
-        nombre = self.inputNombre.text()
-        apellido = self.inputApellido.text()
+        nombre = self.inputNombre.text().strip()
+        apellido = self.inputApellido.text().strip()
         carrera = self.comboCarrera.currentText()
-        correo = self.inputCorreo.text()
+        correo = self.inputCorreo.text().strip()
         activo = self.checkActivo.isChecked()
         
-        # Validacion fecha
-        nacimiento = self.dateNacimiento.date().toString("yyyy-MM-dd")
+        # 1. Validar campos obligatorios
         if not nombre or not apellido or not correo:
             QMessageBox.warning(self, "Error", "Complete los campos obligatorios")
+            return
+
+        # 2. Validar Nombre (Solo letras y espacios, min 2 chars)
+        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", nombre) or len(nombre) < 2:
+            QMessageBox.warning(self, "Error", "El Nombre es inválido. Use solo letras y mínimo 2 caracteres.")
+            return
+
+        # 3. Validar Apellido (Solo letras y espacios, min 2 chars)
+        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", apellido) or len(apellido) < 2:
+            QMessageBox.warning(self, "Error", "El Apellido es inválido. Use solo letras y mínimo 2 caracteres.")
+            return
+
+        # 4. Validar Correo (Formato simple)
+        if not re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", correo):
+            QMessageBox.warning(self, "Error", "El formato del correo es inválido (ejemplo@dominio.com).")
             return
 
         # Validacion de fecha

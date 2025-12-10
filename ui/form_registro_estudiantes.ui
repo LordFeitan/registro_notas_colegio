@@ -219,7 +219,8 @@ QHeaderView::section {
              </property>
             </widget>
            </item>
-          </layout>
+
+         </layout>
          </widget>
         </item>
         <item>
@@ -297,6 +298,19 @@ QHeaderView::section {
            </property>
           </widget>
          </item>
+          <item>
+           <widget class="QPushButton" name="btnEliminar">
+            <property name="text">
+             <string>🗑️ Eliminar</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">background-color: #e74c3c;</string>
+            </property>
+           </widget>
+          </item>
         </layout>
        </item>
        <item>

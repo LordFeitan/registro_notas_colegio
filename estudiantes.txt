@@ -1,6 +1,5 @@
 ID|NOMBRE|APELLIDO|CARRERA|NACIMIENTO|CORREO|ACTIVO
 2024001|Ana|García|Ingeniería de Sistemas|2000-05-15|ana.garcia@mail.com|1
-2024002|Luis Alberto|Pérez|Derecho|1999-11-20|luis.perez@mail.com|0
 2024003|María|Rodríguez|Arquitectura|2001-03-10|maria.rod@mail.com|1
 2024004|Carlos|Sánchez|Medicina|2000-01-25|carlos.san@mail.com|1
 2024005|Sofía|López|Diseño Gráfico|2002-07-08|sofia.lop@mail.com|1
