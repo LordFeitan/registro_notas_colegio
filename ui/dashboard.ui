@@ -153,12 +153,42 @@ SYSTEM</string>
         </spacer>
        </item>
        <item>
+        <widget class="QPushButton" name="btnEstudiantes">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>👤 Gestionar Estudiantes</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnCursos">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>📚 Gestionar Cursos</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btnMatricula">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>📋 Gestionar Matrículas</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="btnAsistencia">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="text">
-          <string>Tomar Asistencia</string>
+          <string>📅 Tomar Asistencia</string>
          </property>
         </widget>
        </item>
@@ -168,7 +198,7 @@ SYSTEM</string>
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="text">
-          <string>Registro de Notas</string>
+          <string>📝 Registro de Notas</string>
          </property>
         </widget>
        </item>
@@ -178,7 +208,7 @@ SYSTEM</string>
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="text">
-          <string>Reportes</string>
+          <string>📊 Reportes</string>
          </property>
         </widget>
        </item>
@@ -274,7 +304,7 @@ SYSTEM</string>
           </font>
          </property>
          <property name="text">
-          <string>Estudiantes Recientes</string>
+          <string>Últimas Calificaciones</string>
          </property>
         </widget>
        </item>

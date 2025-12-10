@@ -1,5 +1,12 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem
+import os
+import warnings
+
+# Suppress PyQt6 internal warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*sipPyTypeDict.*")
+
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem, QVBoxLayout
+from PyQt6.QtGui import QColor
 from PyQt6 import uic
 
 # Import models & data modules
@@ -10,14 +17,24 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__()
         # Cargar la interfaz principal directamente desde el archivo .ui
-        uic.loadUi("dashboard.ui", self)
+        uic.loadUi("ui/dashboard.ui", self)
         
         # Inicializar DataManager
         self.db = DataManager("notas_db.txt")
         
+        # Inicializar Grafico ANTES de cargar datos
+        self.grafico = GraphWidget()
+        if self.statsFrame.layout().count() > 0:
+             item = self.statsFrame.layout().takeAt(0)
+             if item.widget(): item.widget().deleteLater()
+        self.statsFrame.layout().addWidget(self.grafico)
+        
         # Conectar botones del Dashboard a funciones
         self.btnNotas.clicked.connect(self.abrir_ventana_notas)
         self.btnAsistencia.clicked.connect(self.abrir_ventana_asistencia)
+        self.btnEstudiantes.clicked.connect(self.abrir_ventana_estudiantes)
+        self.btnCursos.clicked.connect(self.abrir_ventana_cursos)
+        self.btnMatricula.clicked.connect(self.abrir_ventana_matricula)
         
         # Cargar datos iniciales en el Dashboard
         self.cargar_resumen_dashboard()
@@ -25,6 +42,9 @@ class MainApp(QMainWindow):
         # Referencias a sub-ventanas
         self.ventana_notas = None
         self.ventana_asistencia = None
+        self.ventana_estudiantes = None
+        self.ventana_cursos = None
+        self.ventana_matricula = None
 
     def cargar_resumen_dashboard(self):
         """Carga las ultimas notas registradas en la tabla del dashboard"""
@@ -46,6 +66,30 @@ class MainApp(QMainWindow):
             estado = "Aprobado" if nota_val >= 11 else "Desaprobado"
             self.tableWidget.setItem(row_idx, 3, QTableWidgetItem(estado))
 
+        # Calcular promedios para el grafico
+        self.actualizar_grafico(notas)
+
+    def actualizar_grafico(self, notas):
+        if not notas:
+            return
+            
+        cursos_notas = {}
+        # Agrupar notas por curso
+        for registro in notas:
+            curso = registro['curso']
+            nota = int(registro['nota'])
+            if curso not in cursos_notas:
+                cursos_notas[curso] = []
+            cursos_notas[curso].append(nota)
+            
+        # Calcular promedio
+        data_grafico = {}
+        for curso, lista_notas in cursos_notas.items():
+            promedio = sum(lista_notas) / len(lista_notas)
+            data_grafico[curso] = promedio
+            
+        self.grafico.plot_grades(data_grafico)
+
     def abrir_ventana_notas(self):
         self.ventana_notas = VentanaNotas(self.db)
         # Recargar dashboard al cerrar (opcional, aqui simple)
@@ -53,18 +97,307 @@ class MainApp(QMainWindow):
         self.ventana_notas.show()
 
     def abrir_ventana_asistencia(self):
-        self.ventana_asistencia = VentanaAsistencia()
+        self.ventana_asistencia = VentanaAsistencia(self.db)
         self.ventana_asistencia.show()
+
+    def abrir_ventana_estudiantes(self):
+        self.ventana_estudiantes = VentanaRegistroEstudiantes(self.db)
+        self.ventana_estudiantes.show()
+
+    def abrir_ventana_cursos(self):
+        self.ventana_cursos = VentanaGestionCursos(self.db)
+        self.ventana_cursos.show()
+
+    def abrir_ventana_matricula(self):
+        self.ventana_matricula = VentanaMatricula(self.db)
+        self.ventana_matricula.show()
+
+class VentanaRegistroEstudiantes(QWidget):
+    def __init__(self, db_manager):
+        super().__init__()
+        uic.loadUi("ui/form_registro_estudiantes.ui", self)
+        self.db = db_manager
+        
+        self.btnGuardar.clicked.connect(self.registrar_estudiante)
+        
+        # Conectar Busqueda
+        self.btnBuscar.clicked.connect(self.filtrar_estudiantes)
+        self.inputBusqueda.textChanged.connect(self.filtrar_estudiantes)
+        
+        # Conectar Edicion
+        self.tableEstudiantes.itemDoubleClicked.connect(self.cargar_estudiante_para_editar)
+        try:
+            self.btnEditar.clicked.connect(self.editar_seleccionado)
+        except AttributeError:
+            pass
+
+        # Nuevo boton limpiar (asegurate de haberlo agregado al UI o manejar error si no existe)
+        try:
+            self.btnLimpiar.clicked.connect(self.limpiar_formulario)
+        except AttributeError:
+            pass # Si no existe aun en el UI cargado
+            
+        self.cargar_carreras()
+        self.cargar_tabla()
+
+    def filtrar_estudiantes(self):
+        termino = self.inputBusqueda.text()
+        if not termino:
+            self.cargar_tabla()
+            return
+            
+        resultados = self.db.buscar_estudiantes(termino)
+        self.actualizar_tabla(resultados)
+
+    def editar_seleccionado(self):
+        row = self.tableEstudiantes.currentRow()
+        if row >= 0:
+            item = self.tableEstudiantes.item(row, 0) # Item ID
+            self.cargar_estudiante_para_editar(item)
+        else:
+            QMessageBox.warning(self, "Aviso", "Seleccione un estudiante de la tabla para editar.")
+
+    def cargar_carreras(self):
+        """Carga las carreras desde el txt al ComboBox"""
+        self.comboCarrera.clear()
+        try:
+            if os.path.exists("carreras.txt"):
+                with open("carreras.txt", 'r', encoding='utf-8') as f:
+                    carreras = [line.strip() for line in f if line.strip()]
+                    self.comboCarrera.addItems(carreras)
+            else:
+                self.comboCarrera.addItems(["Ingeniería de Sistemas", "Administración", "Contabilidad"]) # Default
+        except Exception as e:
+            print(f"Error cargando carreras: {e}")
+
+    def registrar_estudiante(self):
+        # El ID ahora es read-only, pero si tiene texto, es edicion
+        id_actual = self.inputID.text()
+        nombre = self.inputNombre.text()
+        apellido = self.inputApellido.text()
+        carrera = self.comboCarrera.currentText()
+        correo = self.inputCorreo.text()
+        activo = self.checkActivo.isChecked()
+        
+        # Validacion fecha
+        nacimiento = self.dateNacimiento.date().toString("yyyy-MM-dd")
+        if not nombre or not apellido or not correo:
+            QMessageBox.warning(self, "Error", "Complete los campos obligatorios")
+            return
+
+        # Validacion de fecha
+        from PyQt6.QtCore import QDate
+        fecha_birth = self.dateNacimiento.date()
+        if fecha_birth >= QDate.currentDate():
+             QMessageBox.warning(self, "Error", "La fecha de nacimiento debe ser anterior a hoy")
+             return
+
+        # LOGICA UPDATE VS SAVE
+        if "Generado" in id_actual or not id_actual:
+            # ES NUEVO
+            if self.db.registrar_estudiante(nombre, apellido, carrera, nacimiento, correo, activo):
+                QMessageBox.information(self, "Exito", "Estudiante registrado correctamente")
+                self.limpiar_formulario()
+                self.cargar_tabla()
+            else:
+                QMessageBox.critical(self, "Error", "Error al guardar estudiante")
+        else:
+            # ES EDICION
+            if self.db.actualizar_estudiante(id_actual, nombre, apellido, carrera, nacimiento, correo, activo):
+                QMessageBox.information(self, "Exito", "Estudiante actualizado correctamente")
+                self.limpiar_formulario()
+                self.cargar_tabla()
+            else:
+                QMessageBox.critical(self, "Error", "Error al actualizar estudiante")
+
+    def cargar_estudiante_para_editar(self, item):
+        row = item.row()
+        id_est = self.tableEstudiantes.item(row, 0).text()
+        
+        # Buscamos el objeto completo en la DB para sacar todos los datos (incluido activo)
+        estudiante = None
+        for est in self.db.obtener_estudiantes():
+            if est['id'] == id_est:
+                estudiante = est
+                break
+                
+        if estudiante:
+            self.inputID.setText(estudiante['id'])
+            self.inputNombre.setText(estudiante['nombre'])
+            self.inputApellido.setText(estudiante['apellido'])
+            self.comboCarrera.setCurrentText(estudiante['carrera'])
+            self.inputCorreo.setText(estudiante['correo'])
+            self.checkActivo.setChecked(estudiante.get('activo', True))
+            
+            from PyQt6.QtCore import QDate
+            if estudiante['nacimiento']:
+                 self.dateNacimiento.setDate(QDate.fromString(estudiante['nacimiento'], "yyyy-MM-dd"))
+                 
+            self.btnGuardar.setText("Actualizar Estudiante")
+
+    def limpiar_formulario(self):
+        self.inputID.setText("Generado automáticamente")
+        self.inputNombre.clear()
+        self.inputApellido.clear()
+        self.inputCorreo.clear()
+        self.checkActivo.setChecked(True)
+        self.dateNacimiento.setDate(self.dateNacimiento.minimumDate()) 
+        self.btnGuardar.setText("Guardar Estudiante")
+
+    def cargar_tabla(self):
+        estudiantes = self.db.obtener_estudiantes()
+        self.actualizar_tabla(estudiantes)
+
+    def actualizar_tabla(self, estudiantes):
+        self.tableEstudiantes.setRowCount(0)
+        # La tabla tiene 6 columnas, podriamos agregar una 7ma visual para "Estado"
+        # Por ahora lo dejaremos asi, ya que el checkbox muestra el estado al editar
+        for row_idx, data in enumerate(estudiantes):
+            self.tableEstudiantes.insertRow(row_idx)
+            
+            # Determinar color segun estado
+            es_activo = data.get('activo', True)
+            color_fondo = QColor(255, 255, 255) # Blanco
+            if not es_activo:
+                color_fondo = QColor(255, 230, 230) # Rojo suave
+            
+            items = [
+                data['id'], data['nombre'], data['apellido'], 
+                data['carrera'], data.get('nacimiento', ''), data.get('correo', '')
+            ]
+            
+            for col_idx, valor in enumerate(items):
+                item = QTableWidgetItem(str(valor))
+                item.setBackground(color_fondo)
+                self.tableEstudiantes.setItem(row_idx, col_idx, item)
+
+class VentanaGestionCursos(QWidget):
+    def __init__(self, db_manager):
+        super().__init__()
+        uic.loadUi("ui/form_gestion_cursos.ui", self)
+        self.db = db_manager
+        
+        self.btnGuardar.clicked.connect(self.registrar_curso)
+        self.btnBuscar.clicked.connect(self.filtrar_cursos)
+        self.inputBusqueda.textChanged.connect(self.filtrar_cursos)
+        
+        self.cargar_tabla()
+        
+    def registrar_curso(self):
+        codigo = self.inputCodigo.text()
+        nombre = self.inputNombre.text()
+        
+        if not codigo or not nombre:
+             QMessageBox.warning(self, "Error", "Complete todos los campos")
+             return
+             
+        if self.db.registrar_curso(codigo, nombre):
+            QMessageBox.information(self, "Exito", "Curso registrado")
+            self.inputCodigo.clear()
+            self.inputNombre.clear()
+            self.cargar_tabla()
+        else:
+            QMessageBox.critical(self, "Error", "Error al guardar")
+            
+    def cargar_tabla(self):
+        cursos = self.db.obtener_cursos()
+        self.actualizar_tabla(cursos)
+        
+    def filtrar_cursos(self):
+        termino = self.inputBusqueda.text()
+        if not termino:
+            self.cargar_tabla()
+            return
+        resultados = self.db.buscar_cursos(termino)
+        self.actualizar_tabla(resultados)
+        
+    def actualizar_tabla(self, cursos):
+        self.tableCursos.setRowCount(0)
+        for i, c in enumerate(cursos):
+            self.tableCursos.insertRow(i)
+            self.tableCursos.setItem(i, 0, QTableWidgetItem(c['codigo']))
+            self.tableCursos.setItem(i, 1, QTableWidgetItem(c['nombre']))
+
+
+class VentanaMatricula(QWidget):
+    def __init__(self, db_manager):
+        super().__init__()
+        uic.loadUi("ui/form_matricula.ui", self)
+        self.db = db_manager
+        
+        self.btnMatricular.clicked.connect(self.registrar_matricula)
+        
+        self.cargar_combos()
+        self.cargar_tabla()
+        
+    def cargar_combos(self):
+        self.comboEstudiante.clear()
+        self.comboCurso.clear()
+        
+        # Cargar estudiantes
+        estudiantes = self.db.obtener_estudiantes()
+        for est in estudiantes:
+            # Guardamos ID en el data del item
+            self.comboEstudiante.addItem(f"{est['nombre']} {est['apellido']} ({est['id']})", est['id'])
+            
+        # Cargar cursos
+        cursos = self.db.obtener_cursos()
+        for cur in cursos:
+            self.comboCurso.addItem(f"{cur['nombre']} ({cur['codigo']})", cur['codigo'])
+            
+    def registrar_matricula(self):
+        idx_est = self.comboEstudiante.currentIndex()
+        idx_cur = self.comboCurso.currentIndex()
+        
+        if idx_est == -1 or idx_cur == -1:
+            QMessageBox.warning(self, "Error", "Seleccione estudiante y curso")
+            return
+            
+        id_est = self.comboEstudiante.itemData(idx_est)
+        cod_curso = self.comboCurso.itemData(idx_cur)
+        
+        from PyQt6.QtCore import QDate
+        fecha = QDate.currentDate().toString("yyyy-MM-dd")
+        
+        exito, msg = self.db.registrar_matricula(id_est, cod_curso, fecha)
+        if exito:
+            QMessageBox.information(self, "Exito", msg)
+            self.cargar_tabla()
+        else:
+            QMessageBox.warning(self, "Atención", msg)
+            
+    def cargar_tabla(self):
+        matriculas = self.db.obtener_matriculas()
+        self.tableMatriculas.setRowCount(0)
+        for i, m in enumerate(matriculas):
+            self.tableMatriculas.insertRow(i)
+            self.tableMatriculas.setItem(i, 0, QTableWidgetItem(m['estudiante']))
+            self.tableMatriculas.setItem(i, 1, QTableWidgetItem(m['curso']))
+            self.tableMatriculas.setItem(i, 2, QTableWidgetItem(m['fecha']))
+
 
 class VentanaNotas(QWidget):
     def __init__(self, db_manager):
         super().__init__()
-        uic.loadUi("form_notas.ui", self)
+        uic.loadUi("ui/form_notas.ui", self)
         self.db = db_manager
+        
+        # Cargar cursos dinamicos
+        self.cargar_combo_cursos()
         
         # Configurar UI inicial
         self.btnRegistrar.clicked.connect(self.registrar_nota)
         self.cargar_datos_tabla()
+
+    def cargar_combo_cursos(self):
+        self.comboCurso.clear()
+        cursos = self.db.obtener_cursos()
+        if cursos:
+            for c in cursos:
+                self.comboCurso.addItem(c['nombre'])
+        else:
+            # Fallback si no hay cursos registrados aun
+            self.comboCurso.addItems(["Matemáticas", "Historia", "Ciencias", "Programación"])
 
     def registrar_nota(self):
         # Obtener datos de la UI
@@ -100,11 +433,25 @@ class VentanaNotas(QWidget):
 
 
 class VentanaAsistencia(QWidget):
-    def __init__(self):
+    def __init__(self, db_manager):
         super().__init__()
-        uic.loadUi("form_asistencia.ui", self)
+        uic.loadUi("ui/form_asistencia.ui", self)
+        self.db = db_manager
+        
+        # Limpiar items de ejemplo del UI Designer
+        self.listEstudiantes.clear()
+        
+        # Cargar estudiantes reales
+        self.cargar_lista_estudiantes()
         
         self.btnMarcarAsistencia.clicked.connect(self.guardar_asistencia)
+        
+    def cargar_lista_estudiantes(self):
+        estudiantes = self.db.obtener_estudiantes()
+        for est in estudiantes:
+            # Formato: "ID - Nombre Apellido"
+            texto = f"{est['id']} - {est['nombre']} {est['apellido']}"
+            self.listEstudiantes.addItem(texto)
         
     def guardar_asistencia(self):
         fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
@@ -122,6 +469,38 @@ class VentanaAsistencia(QWidget):
         estudiante_texto = student_item.text()
         
         QMessageBox.information(self, "Guardado", f"Asistencia {estado} registrada para {estudiante_texto} el {fecha}")
+
+# Matplotlib integration
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.pyplot as plt
+
+class GraphWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.figure, self.ax = plt.subplots(figsize=(5, 3))
+        self.canvas = FigureCanvas(self.figure)
+        
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+        
+    def plot_grades(self, data):
+        """
+        Data format: {'Curso A': 15, 'Curso B': 12, ...}
+        """
+        self.ax.clear()
+        cursos = list(data.keys())
+        promedios = list(data.values())
+        
+        bars = self.ax.bar(cursos, promedios, color='#3498db')
+        self.ax.set_title("Promedio de Notas por Curso")
+        self.ax.set_ylim(0, 20)
+        self.ax.set_ylabel("Nota Promedio")
+        
+        # Rotar etiquetas si son muchas
+        plt.setp(self.ax.get_xticklabels(), rotation=15, ha="right")
+        self.figure.tight_layout()
+        self.canvas.draw()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

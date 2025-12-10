@@ -1,0 +1,13 @@
+ID|NOMBRE|APELLIDO|CARRERA|NACIMIENTO|CORREO|ACTIVO
+2024001|Ana|García|Ingeniería de Sistemas|2000-05-15|ana.garcia@mail.com|1
+2024002|Luis Alberto|Pérez|Derecho|1999-11-20|luis.perez@mail.com|0
+2024003|María|Rodríguez|Arquitectura|2001-03-10|maria.rod@mail.com|1
+2024004|Carlos|Sánchez|Medicina|2000-01-25|carlos.san@mail.com|1
+2024005|Sofía|López|Diseño Gráfico|2002-07-08|sofia.lop@mail.com|1
+2024006|Jorge|Fernández|Ingeniería Civil|1998-12-05|jorge.fer@mail.com|1
+2024007|Lucía|Martínez|Psicología|2001-09-30|lucia.mar@mail.com|1
+2024008|Pedro|González|Administración|2000-06-18|pedro.gon@mail.com|1
+2024009|Elena|Díaz|Contabilidad|1999-04-22|elena.diaz@mail.com|1
+2024010|Miguel|Ruiz|Marketing|2002-02-14|miguel.ruiz@mail.com|1
+2024011|Jhonnatan|Arrunategui|Ingeniería de Sistemas|1985-11-07|dick18_666@gmail.com|1
+2024012|Yomira|Pacho|Ingeniería de Sistemas|2000-01-10|pacho@gmail.com|1

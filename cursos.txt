@@ -1,0 +1,6 @@
+CUR-001|Matemática Básica
+CUR-002|Programación Orientada a Objetos
+CUR-003|Base de Datos
+CUR-004|Desarrollo Web
+CUR-005|Estadística
+CUR-006|CURSO DE IA
