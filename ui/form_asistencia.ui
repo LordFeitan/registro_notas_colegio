@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
-    <height>650</height>
+    <width>1100</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Registro de Asistencia</string>
+   <string>Control de Asistencia</string>
   </property>
   <property name="styleSheet">
    <string notr="true">QWidget {
@@ -21,6 +21,24 @@
 QLabel {
     color: #2c3e50;
     font-size: 14px;
+    font-weight: bold;
+}
+QComboBox {
+    padding: 8px;
+    border: 1px solid #dcdde1;
+    border-radius: 4px;
+    background-color: white;
+}
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #2980b9;
 }
 QTableWidget {
     background-color: white;
@@ -35,270 +53,210 @@ QHeaderView::section {
     font-weight: bold;
     color: #7f8c8d;
 }
-QPushButton {
-    background-color: #e67e22;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    font-weight: bold;
-}
-QPushButton:hover {
-    background-color: #d35400;
-}
-QRadioButton {
-    spacing: 10px;
-    font-size: 13px;
-    color: #2c3e50;
-}
-QCalendarWidget QWidget {
-    alternate-background-color: #ecf0f1;
-}
+/* Calendar Fixes */
 QCalendarWidget QToolButton {
     color: black;
-    icon-size: 20px, 20px;
-    background-color: #ecf0f1;
+    background-color: transparent;
 }
-QGroupBox {
-    border: 1px solid #dcdde1;
-    border-radius: 5px;
-    margin-top: 10px;
+QCalendarWidget QMenu {
+    color: black;
     background-color: white;
 }
-QGroupBox::title {
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    padding: 0 3px;
-    color: #7f8c8d;
+QCalendarWidget QSpinBox {
+    color: black;
+    background-color: white;
 }</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayoutMain">
+  <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="spacing">
     <number>20</number>
    </property>
    <property name="leftMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="topMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="rightMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="bottomMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
+   
+   <!-- LEFT PANEL: CONTROLS -->
    <item>
-    <widget class="QLabel" name="labelTitle">
-     <property name="font">
-      <font>
-       <pointsize>18</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
+    <widget class="QFrame" name="frameLeft">
+     <property name="maximumSize">
+      <size>
+       <width>380</width>
+       <height>16777215</height>
+      </size>
      </property>
-     <property name="text">
-      <string>Control de Asistencia</string>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
      </property>
+     <layout class="QVBoxLayout" name="verticalLayoutLeft">
+      <item>
+       <widget class="QLabel" name="labelTitle">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Marcar Asistencia</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacerTop">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelCurso">
+        <property name="text">
+         <string>Seleccione Curso:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboCurso">
+        <property name="placeholderText">
+         <string>Seleccione un curso...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelFecha">
+        <property name="text">
+         <string>Fecha:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCalendarWidget" name="calendarWidget">
+        <property name="gridVisible">
+         <bool>true</bool>
+        </property>
+        <property name="verticalHeaderFormat">
+         <enum>QCalendarWidget::NoVerticalHeader</enum>
+        </property>
+        <property name="navigationBarVisible">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacerButtons">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>30</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnGuardar">
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="text">
+         <string>💾 Guardar Cambios</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelInfo">
+        <property name="text">
+         <string>Seleccione un estado en la tabla para cada estudiante.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="styleSheet">
+         <string>color: #7f8c8d; font-weight: normal; font-size: 12px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </widget>
    </item>
+
+   <!-- RIGHT PANEL: TABLE -->
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutBody">
-     <property name="spacing">
-      <number>20</number>
-     </property>
-     
-     <!-- PANEL IZQUIERDO: CONTROLES -->
+    <layout class="QVBoxLayout" name="verticalLayoutRight">
      <item>
-      <widget class="QWidget" name="widgetLeft" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>320</width>
-         <height>0</height>
-        </size>
+      <widget class="QTableWidget" name="tableAsistencia">
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
        </property>
-       <property name="maximumSize">
-        <size>
-         <width>350</width>
-         <height>16777215</height>
-        </size>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayoutLeft">
-        <item>
-         <widget class="QLabel" name="labelCurso">
-          <property name="text">
-           <string>Seleccione Curso:</string>
-          </property>
-          <property name="font">
-           <font>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="comboCurso">
-          <property name="cursor">
-           <cursorShape>PointingHandCursor</cursorShape>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="labelCalendar">
-          <property name="text">
-           <string>Seleccione Fecha:</string>
-          </property>
-          <property name="font">
-           <font>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCalendarWidget" name="calendarWidget">
-          <property name="gridVisible">
-           <bool>true</bool>
-          </property>
-          <property name="verticalHeaderFormat">
-           <enum>QCalendarWidget::NoVerticalHeader</enum>
-          </property>
-          <property name="navigationBarVisible">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupEstado">
-          <property name="title">
-           <string>Estado de Asistencia</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayoutRadio">
-           <property name="spacing">
-            <number>10</number>
-           </property>
-           <item>
-            <widget class="QRadioButton" name="rbPresente">
-             <property name="text">
-              <string>🟢 Presente</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="rbTardanza">
-             <property name="text">
-              <string>🟡 Tardanza</string>
-             </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QRadioButton" name="rbAusente">
-             <property name="text">
-              <string>🔴 Ausente</string>
-             </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnMarcarAsistencia">
-          <property name="cursor">
-           <cursorShape>PointingHandCursor</cursorShape>
-          </property>
-          <property name="text">
-           <string>Registrar Asistencia</string>
-          </property>
-          <property name="minimumHeight">
-           <number>40</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       <property name="columnCount">
+        <number>4</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>ID</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Nombres</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Apellidos</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Estado (Click para cambiar)</string>
+        </property>
+       </column>
       </widget>
-     </item>
-     
-     <!-- PANEL DERECHO: TABLA -->
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayoutRight">
-       <item>
-        <widget class="QLabel" name="labelLista">
-         <property name="text">
-          <string>Lista de Estudiantes (Seleccione para marcar):</string>
-         </property>
-         <property name="font">
-           <font>
-            <weight>75</weight>
-            <bold>true</bold>
-           </font>
-          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QTableWidget" name="tableEstudiantes">
-         <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
-         </property>
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::SingleSelection</enum>
-         </property>
-         <property name="alternatingRowColors">
-          <bool>true</bool>
-         </property>
-         <property name="columnCount">
-          <number>3</number>
-         </property>
-         <column>
-          <property name="text">
-           <string>ID</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Nombre</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Apellido</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-      </layout>
      </item>
     </layout>
    </item>

@@ -58,6 +58,19 @@ QPushButton#btnLimpiar, QPushButton#btnEliminar {
 }
 QPushButton#btnEliminar {
     background-color: #e74c3c;
+}
+/* Calendar Fixes */
+QCalendarWidget QToolButton {
+    color: black;
+    background-color: transparent;
+}
+QCalendarWidget QMenu {
+    color: black;
+    background-color: white;
+}
+QCalendarWidget QSpinBox {
+    color: black;
+    background-color: white;
 }</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">

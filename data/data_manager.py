@@ -201,6 +201,21 @@ class DataManager:
         except IOError as e:
             return False, str(e)
 
+    def obtener_matriculados(self, cod_curso):
+        """Devuelve lista de objetos estudiante inscritos en un curso."""
+        estudiantes_activos = {e['id']: e for e in self.obtener_estudiantes(activos=True)}
+        matriculados = []
+        
+        matriculas = self.obtener_matriculas() # Obtiene lista con 'id_est', 'cod_curso'
+        
+        # Filtramos por curso y validamos que el estudiante exista y este activo
+        for m in matriculas:
+            if m['cod_curso'] == cod_curso:
+                est = estudiantes_activos.get(m['id_est'])
+                if est:
+                    matriculados.append(est)
+        return matriculados
+
     def obtener_matriculas(self):
         data = []
         if not os.path.exists(self.archivo_matriculas):
@@ -421,17 +436,62 @@ class DataManager:
 
     def registrar_nota(self, id_est, cod_curso, n1, n2, n3):
         """
-        Guarda las 3 notas y el promedio.
+        Guarda o actualiza las notas (UPSERT).
+        Evita duplicados reemplazando la linea existente.
         """
         promedio = round((n1 + n2 + n3) / 3, 2)
+        notas_existentes = []
+        encontrado = False
+        
+        # 1. Leer todas
+        if os.path.exists(self.archivo_notas):
+            with open(self.archivo_notas, 'r', encoding='utf-8') as f:
+                for line in f:
+                    parts = line.strip().split('|')
+                    if len(parts) >= 2:
+                        if parts[0] == id_est and parts[1] == cod_curso:
+                            # Reemplazamos esta linea con los nuevos datos
+                            linea_nueva = f"{id_est}|{cod_curso}|{n1}|{n2}|{n3}|{promedio}\n"
+                            notas_existentes.append(linea_nueva)
+                            encontrado = True
+                        else:
+                            notas_existentes.append(line) # Mantener original
+                            
+        # 2. Si no existia, agregar al final
+        if not encontrado:
+            linea_nueva = f"{id_est}|{cod_curso}|{n1}|{n2}|{n3}|{promedio}\n"
+            notas_existentes.append(linea_nueva)
+            
+        # 3. Reescribir archivo
         try:
-            with open(self.archivo_notas, 'a', encoding='utf-8') as f:
-                linea = f"{id_est}|{cod_curso}|{n1}|{n2}|{n3}|{promedio}\n"
-                f.write(linea)
+            with open(self.archivo_notas, 'w', encoding='utf-8') as f:
+                f.writelines(notas_existentes)
             return True
         except IOError as e:
             print(f"Error al guardar nota: {e}")
             return False
+
+    def obtener_notas_diccionario(self, cod_curso):
+        """
+        Retorna dictionario {(id_est): {n1, n2, n3, prom}} para acceso rapido O(1).
+        """
+        data = {}
+        if not os.path.exists(self.archivo_notas):
+            return data
+            
+        with open(self.archivo_notas, 'r', encoding='utf-8') as f:
+            for line in f:
+                parts = line.strip().split('|')
+                if len(parts) >= 6:
+                    # id|curso|n1|n2|n3|prom
+                    if parts[1] == cod_curso:
+                        data[parts[0]] = {
+                            "n1": float(parts[2]),
+                            "n2": float(parts[3]),
+                            "n3": float(parts[4]),
+                            "promedio": float(parts[5])
+                        }
+        return data
 
     def obtener_todas_las_notas(self):
         """Lee todo el archivo y retorna una lista de diccionarios, enriqueciendo con nombres."""
@@ -445,10 +505,13 @@ class DataManager:
 
         with open(self.archivo_notas, 'r', encoding='utf-8') as f:
             for i, linea in enumerate(f):
-                if i == 0: continue # Saltar header
+                if i == 0: continue # Saltar header (si lo tuviera, pero upsert escribe todo raw, ojo)
+                # EL upsert mantiene todo, pero si la primera vez se creo sin header... 
+                # Asumamos que el archivo NO tiene header explicito o lo tratamos por split
                 partes = linea.strip().split('|')
-                if len(partes) >= 6:
+                if len(partes) >= 6 and partes[0] != "ID_EST": # Ignorar header si existe
                     id_est = partes[0]
+
                     cod_curso = partes[1]
                     
                     data.append({

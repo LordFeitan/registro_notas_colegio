@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1100</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,12 +21,17 @@
 QLabel {
     color: #2c3e50;
     font-size: 14px;
+    font-weight: bold;
 }
-QLineEdit, QComboBox, QSpinBox {
+QLineEdit, QComboBox, QDoubleSpinBox {
     padding: 8px;
     border: 1px solid #dcdde1;
     border-radius: 4px;
     background-color: white;
+}
+QLineEdit:read-only {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
 }
 QPushButton {
     background-color: #3498db;
@@ -51,187 +56,285 @@ QHeaderView::section {
     border: none;
     font-weight: bold;
     color: #7f8c8d;
+}
+QPushButton#btnLimpiar {
+    background-color: #95a5a6;
 }</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="spacing">
     <number>20</number>
    </property>
    <property name="leftMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="topMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="rightMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
    <property name="bottomMargin">
-    <number>30</number>
+    <number>20</number>
    </property>
+   
+   <!-- LEFT PANEL: CONTROLS -->
    <item>
-    <widget class="QLabel" name="labelTitle">
-     <property name="font">
-      <font>
-       <pointsize>20</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
+    <widget class="QFrame" name="frameLeft">
+     <property name="maximumSize">
+      <size>
+       <width>350</width>
+       <height>16777215</height>
+      </size>
      </property>
-     <property name="text">
-      <string>Registro de Calificaciones</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="frameInput">
      <property name="frameShape">
       <enum>QFrame::StyledPanel</enum>
      </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <property name="horizontalSpacing">
-       <number>20</number>
-      </property>
-      <property name="verticalSpacing">
-       <number>15</number>
-      </property>
-
-      <!-- Fila 0: Curso y Estudiante -->
-      <item row="0" column="0">
+     <layout class="QVBoxLayout" name="verticalLayoutLeft">
+      <item>
+       <widget class="QLabel" name="labelTitle">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Calificar Estudiante</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacerTop">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <item>
        <widget class="QLabel" name="labelCurso">
         <property name="text">
-         <string>Seleccionar Curso:</string>
+         <string>Curso:</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="comboCurso"/>
+      <item>
+       <widget class="QComboBox" name="comboCurso">
+        <property name="placeholderText">
+         <string>Seleccione curso...</string>
+        </property>
+       </widget>
       </item>
-      <item row="0" column="2">
+      
+      <item>
        <widget class="QLabel" name="labelEstudiante">
         <property name="text">
-         <string>Seleccionar Estudiante:</string>
+         <string>Estudiante Seleccionado:</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
-       <widget class="QComboBox" name="comboEstudiante"/>
-      </item>
-
-      <!-- Fila 1: Notas -->
-      <item row="1" column="0">
-       <widget class="QLabel" name="labelNota1">
-        <property name="text">
-         <string>Nota 1 (0-20):</string>
+      <item>
+       <widget class="QLineEdit" name="inputEstudiante">
+        <property name="readOnly">
+         <bool>true</bool>
         </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="spinNota1">
-        <property name="maximum">
-         <number>20</number>
+        <property name="placeholderText">
+         <string>Click en la tabla para seleccionar</string>
         </property>
        </widget>
       </item>
       
-      <item row="1" column="2">
-       <widget class="QLabel" name="labelNota2">
+      <item>
+       <widget class="QLabel" name="labelN1">
         <property name="text">
-         <string>Nota 2 (0-20):</string>
+         <string>Nota 1:</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="3">
-       <widget class="QSpinBox" name="spinNota2">
+      <item>
+       <widget class="QDoubleSpinBox" name="spinN1">
         <property name="maximum">
-         <number>20</number>
+         <double>20.0</double>
         </property>
        </widget>
       </item>
       
-      <item row="2" column="0">
-       <widget class="QLabel" name="labelNota3">
+      <item>
+       <widget class="QLabel" name="labelN2">
         <property name="text">
-         <string>Nota 3 (0-20):</string>
+         <string>Nota 2:</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
-       <widget class="QSpinBox" name="spinNota3">
+      <item>
+       <widget class="QDoubleSpinBox" name="spinN2">
         <property name="maximum">
-         <number>20</number>
+         <double>20.0</double>
         </property>
        </widget>
       </item>
-
-      <!-- Boton Registrar -->
-      <item row="2" column="2" colspan="2">
-       <widget class="QPushButton" name="btnRegistrar">
+      
+      <item>
+       <widget class="QLabel" name="labelN3">
         <property name="text">
-         <string>💾 Registrar Calificaciones</string>
+         <string>Nota 3:</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="spinN3">
+        <property name="maximum">
+         <double>20.0</double>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <widget class="QLabel" name="labelPromedio">
+        <property name="text">
+         <string>Promedio (Calculado):</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="inputPromedio">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="styleSheet">
+         <string>font-weight: bold; background-color: #ecf0f1;</string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <spacer name="verticalSpacerButtons">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>30</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <item>
+       <widget class="QPushButton" name="btnGuardar">
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="text">
+         <string>💾 Guardar Nota</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLimpiar">
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="text">
+         <string>🧹 Limpiar</string>
+        </property>
+       </widget>
+      </item>
+      
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
       </item>
      </layout>
     </widget>
-   </item>
+   </item> <!-- End Left Panel -->
+   
+   <!-- RIGHT PANEL: TABLE -->
    <item>
-    <widget class="QTableWidget" name="tableNotas">
-     <property name="columnCount">
-      <number>6</number> <!-- ID, Curso, N1, N2, N3, Promedio -->
-     </property>
-     <column>
-      <property name="text">
-       <string>Estudiante</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Curso</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>N1</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>N2</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>N3</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Promedio</string>
-      </property>
-     </column>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QVBoxLayout" name="verticalLayoutRight">
      <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QLineEdit" name="inputBuscar">
+       <property name="placeholderText">
+        <string>🔍 Buscar estudiante...</string>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTableWidget" name="tableNotas">
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
        </property>
-      </spacer>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="columnCount">
+        <number>7</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>ID</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Nombres</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Apellidos</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>N1</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>N2</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>N3</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Promedio</string>
+        </property>
+       </column>
+      </widget>
      </item>
     </layout>
    </item>

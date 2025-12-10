@@ -56,8 +56,8 @@ class MainApp(QMainWindow):
                 general = sum(promedios) / len(promedios)
                 self.lblValPromedio.setText(f"{general:.2f}")
                 
-                # Alumnos en riesgo (promedio < 10.5)
-                riesgo = sum(1 for p in promedios if p < 10.5)
+                # Alumnos en riesgo (promedio < 13)
+                riesgo = sum(1 for p in promedios if p < 13)
                 self.lblValRiesgo.setText(str(riesgo))
             else:
                 self.lblValPromedio.setText("0.0")
@@ -91,7 +91,7 @@ class MainApp(QMainWindow):
             self.tableWidget.setItem(i, 5, QTableWidgetItem(n3))
             self.tableWidget.setItem(i, 6, QTableWidgetItem(prom))
 
-            estado = "Aprobado" if val_prom >= 10.5 else "Desaprobado"
+            estado = "Aprobado" if val_prom >= 13 else "Desaprobado"
             item_estado = QTableWidgetItem(estado)
             
             if estado == "Desaprobado":
@@ -599,78 +599,128 @@ class VentanaNotas(QWidget):
         uic.loadUi("ui/form_notas.ui", self)
         self.db = db_manager
         
-        # Configurar UI inicial
-        self.cargar_combos()
-        self.comboCurso.currentIndexChanged.connect(self.actualizar_combo_estudiantes)
-        self.btnRegistrar.clicked.connect(self.registrar_nota)
-        self.cargar_datos_tabla()
+        # Init
+        self.cargar_cursos()
+        
+        # Conexiones
+        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla)
+        self.btnGuardar.clicked.connect(self.guardar_nota)
+        self.btnLimpiar.clicked.connect(self.limpiar_formulario)
+        self.inputBuscar.textChanged.connect(self.filtrar_tabla)
+        
+        # Seleccion Tabla -> Cargar en Formulario
+        self.tableNotas.cellClicked.connect(self.cargar_alumno_seleccionado)
+        
+        # Cargar inicial
+        self.cargar_tabla()
 
-    def cargar_combos(self):
+    def cargar_cursos(self):
         self.comboCurso.clear()
-        # Cargar Cursos
         cursos = self.db.obtener_cursos()
         for c in cursos:
-            self.comboCurso.addItem(c['nombre'], c['codigo'])
-            
-        # Trigger initial update
-        self.actualizar_combo_estudiantes()
+            self.comboCurso.addItem(f"{c['nombre']} ({c['codigo']})", c['codigo'])
 
-    def actualizar_combo_estudiantes(self):
-        self.comboEstudiante.clear()
+    def cargar_tabla(self):
         idx = self.comboCurso.currentIndex()
         if idx == -1: return
         
         cod_curso = self.comboCurso.itemData(idx)
         
-        # Filtramos SOLO los matriculados
-        estudiantes = self.db.obtener_estudiantes_por_curso(cod_curso)
+        # 1. Obtenemos matriculados (Roster base)
+        matriculados = self.db.obtener_matriculados(cod_curso)
         
-        if estudiantes:
-            self.comboEstudiante.setEnabled(True)
-            for est in estudiantes:
-                if est.get('activo', True):
-                    self.comboEstudiante.addItem(f"{est['nombre']} {est['apellido']} ({est['id']})", est['id'])
-        else:
-            self.comboEstudiante.addItem("No hay estudiantes matriculados", None)
-            self.comboEstudiante.setEnabled(False)
+        # 2. Obtenemos notas existentes (Diccionario para O(1))
+        notas_dict = self.db.obtener_notas_diccionario(cod_curso)
+        
+        self.tableNotas.setRowCount(0)
+        self.tableNotas.setSortingEnabled(False)
+        
+        for i, est in enumerate(matriculados):
+            self.tableNotas.insertRow(i)
+            
+            # Datos ocultos para facilitar guardado
+            item_id = QTableWidgetItem(est['id'])
+            self.tableNotas.setItem(i, 0, item_id)
+            self.tableNotas.setItem(i, 1, QTableWidgetItem(est['nombre']))
+            self.tableNotas.setItem(i, 2, QTableWidgetItem(est['apellido']))
+            
+            # Buscar si tiene notas
+            notas = notas_dict.get(est['id'], {})
+            n1 = notas.get('n1', 0.0)
+            n2 = notas.get('n2', 0.0)
+            n3 = notas.get('n3', 0.0)
+            prom = notas.get('promedio', 0.0)
+            
+            self.tableNotas.setItem(i, 3, QTableWidgetItem(str(n1)))
+            self.tableNotas.setItem(i, 4, QTableWidgetItem(str(n2)))
+            self.tableNotas.setItem(i, 5, QTableWidgetItem(str(n3)))
+            self.tableNotas.setItem(i, 6, QTableWidgetItem(str(prom)))
+            
+    def cargar_alumno_seleccionado(self, row, col):
+        id_est = self.tableNotas.item(row, 0).text()
+        nombre = self.tableNotas.item(row, 1).text()
+        apellido = self.tableNotas.item(row, 2).text()
+        
+        n1 = float(self.tableNotas.item(row, 3).text())
+        n2 = float(self.tableNotas.item(row, 4).text())
+        n3 = float(self.tableNotas.item(row, 5).text())
+        prom = self.tableNotas.item(row, 6).text()
+        
+        self.inputEstudiante.setText(f"{nombre} {apellido} ({id_est})")
+        self.inputEstudiante.setProperty("id_oculto", id_est) # Guardamos ID en propiedad dinàmica
+        
+        self.spinN1.setValue(n1)
+        self.spinN2.setValue(n2)
+        self.spinN3.setValue(n3)
+        self.inputPromedio.setText(prom)
 
-    def registrar_nota(self):
-        # Obtener datos de la UI
-        idx_curso = self.comboCurso.currentIndex()
-        idx_est = self.comboEstudiante.currentIndex()
-        
-        if idx_curso == -1 or idx_est == -1:
-             QMessageBox.warning(self, "Error", "Seleccione Curso y Estudiante")
+    def guardar_nota(self):
+        id_est_txt = self.inputEstudiante.text()
+        if not id_est_txt:
+            QMessageBox.warning(self, "Aviso", "Seleccione un alumno de la tabla primero.")
+            return
+
+        # Extraer ID (usando regex o la propiedad oculta si PyQt lo mantiene, mejor parseamos string o usamos fila seleccionada)
+        # Manera segura: Recobrar de la fila seleccionada, pero el usuario pudo cambiar seleccion...
+        # Usaremos propiedad dinamica si es posible, sino parseamos el texto
+        try:
+            # "Nombre Apellido (ID)" -> split '(', take last, remove ')'
+            id_est = id_est_txt.split('(')[-1].replace(')', '')
+        except:
+             QMessageBox.warning(self, "Error", "No se pudo identificar al alumno.")
              return
-             
+
+        idx_curso = self.comboCurso.currentIndex()
+        if idx_curso == -1: return
         cod_curso = self.comboCurso.itemData(idx_curso)
-        id_est = self.comboEstudiante.itemData(idx_est)
-        
-        n1 = self.spinNota1.value()
-        n2 = self.spinNota2.value()
-        n3 = self.spinNota3.value()
+
+        n1 = self.spinN1.value()
+        n2 = self.spinN2.value()
+        n3 = self.spinN3.value()
         
         if self.db.registrar_nota(id_est, cod_curso, n1, n2, n3):
-            QMessageBox.information(self, "Exito", "Notas registradas correctamente")
-            # Reset spins
-            self.spinNota1.setValue(0)
-            self.spinNota2.setValue(0)
-            self.spinNota3.setValue(0)
-            self.cargar_datos_tabla()
+            QMessageBox.information(self, "Exito", "Notas actualizadas correctamente.")
+            self.cargar_tabla()
+            self.limpiar_formulario()
         else:
-            QMessageBox.critical(self, "Error", "No se pudo guardar en el archivo")
+            QMessageBox.critical(self, "Error", "Falló al guardar notas.")
 
-    def cargar_datos_tabla(self):
-        self.tableNotas.setRowCount(0)
-        notas_guardadas = self.db.obtener_todas_las_notas()
-        for row_idx, data in enumerate(notas_guardadas):
-            self.tableNotas.insertRow(row_idx)
-            self.tableNotas.setItem(row_idx, 0, QTableWidgetItem(data['nombre']))
-            self.tableNotas.setItem(row_idx, 1, QTableWidgetItem(data['curso']))
-            self.tableNotas.setItem(row_idx, 2, QTableWidgetItem(str(data['n1'])))
-            self.tableNotas.setItem(row_idx, 3, QTableWidgetItem(str(data['n2'])))
-            self.tableNotas.setItem(row_idx, 4, QTableWidgetItem(str(data['n3'])))
-            self.tableNotas.setItem(row_idx, 5, QTableWidgetItem(str(data['promedio'])))
+    def limpiar_formulario(self):
+        self.inputEstudiante.clear()
+        self.spinN1.setValue(0)
+        self.spinN2.setValue(0)
+        self.spinN3.setValue(0)
+        self.inputPromedio.clear()
+        
+    def filtrar_tabla(self, texto):
+        texto = texto.lower().strip()
+        for i in range(self.tableNotas.rowCount()):
+            item_nom = self.tableNotas.item(i, 1)
+            item_ape = self.tableNotas.item(i, 2)
+            
+            mostrar = (texto in item_nom.text().lower() or 
+                       texto in item_ape.text().lower())
+            self.tableNotas.setRowHidden(i, not mostrar)
 
 
 
@@ -681,169 +731,127 @@ class VentanaAsistencia(QWidget):
         self.db = db_manager
         
         # UI Setup
-        self.tableEstudiantes.setColumnCount(4)
-        self.tableEstudiantes.setHorizontalHeaderLabels(["ID", "Nombre", "Apellido", "Estado Actual"])
-        self.tableEstudiantes.setColumnWidth(0, 80)
-        self.tableEstudiantes.setColumnWidth(3, 100)
-        self.tableEstudiantes.horizontalHeader().setStretchLastSection(True)
+        # UI Setup
+        self.tableAsistencia.setColumnCount(4)
+        self.tableAsistencia.setHorizontalHeaderLabels(["ID", "Nombre", "Apellido", "Estado (Click para cambiar)"])
+        self.tableAsistencia.setColumnWidth(0, 80)
+        self.tableAsistencia.setColumnWidth(3, 150)
+        self.tableAsistencia.horizontalHeader().setStretchLastSection(True)
         
         # Cargar Cursos
         self.cargar_cursos()
+        self.cargar_tabla_asistencia()
         
-        # Conexiones
-        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla_estudiantes)
-        self.calendarWidget.selectionChanged.connect(self.cargar_tabla_estudiantes)
-        self.tableEstudiantes.itemSelectionChanged.connect(self.cargar_estado_seleccionado)
-        self.btnMarcarAsistencia.clicked.connect(self.guardar_asistencia)
+        # Connections
+        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla_asistencia)
+        self.calendarWidget.selectionChanged.connect(self.validar_fecha_y_cargar)
+        self.btnGuardar.clicked.connect(self.guardar_cambios)
         
-        # Cargar tabla inicial
-        self.cargar_tabla_estudiantes()
-        
+        # Click en celda para cambiar estado (Ciclo: Presente -> Tardanza -> Ausente -> Presente)
+        self.tableAsistencia.cellClicked.connect(self.cambiar_estado_celda)
+
     def cargar_cursos(self):
         self.comboCurso.clear()
         cursos = self.db.obtener_cursos()
         for c in cursos:
-            self.comboCurso.addItem(c['nombre'], c['codigo'])
-            
-    def cargar_tabla_estudiantes(self):
-        # Obtener filtros
-        idx_curso = self.comboCurso.currentIndex()
-        if idx_curso == -1: return
-        cod_curso = self.comboCurso.itemData(idx_curso)
-        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
-        
-        # Actualizar Label de fecha para claridad
-        self.labelCalendar.setText(f"Fecha Seleccionada: {fecha}")
-        
-        # Obtener Estudiantes ACTIVOS (Idealmente filtrados por matricula, pero usaremos todos por simplicidad o estudiantes matriculados si existiera esa logica facil)
-        # Para ser precisos con el requerimiento de "curso a que asisto", deberiamos usar matriculas.
-        # Filtremos por matricula:
-        matriculas = self.db.obtener_matriculas() # Esto devuelve diccionarios con nombres, no IDs...
-        # DataManager.obtener_matriculas devuelve nombres procesados, no raw data.
-        # Usaremos busqueda bruta en raw matriculas para obtener IDs
-        ids_matriculados = []
-        if os.path.exists(self.db.archivo_matriculas):
-             with open(self.db.archivo_matriculas, 'r', encoding='utf-8') as f:
-                for line in f:
-                    parts = line.split('|')
-                    if len(parts) >= 2 and parts[1] == cod_curso:
-                        ids_matriculados.append(parts[0])
-                        
-        estudiantes = self.db.obtener_estudiantes()
-        
-        # Logica de Filtrado:
-        # 1. Intentar buscar estudiantes matriculados en estecurso
-        ids_en_curso = []
-        if os.path.exists("matriculas.txt"):
-             with open("matriculas.txt", 'r', encoding='utf-8') as f:
-                for line in f:
-                    parts = line.split('|')
-                    if len(parts) >= 2 and parts[1] == cod_curso:
-                        ids_en_curso.append(parts[0])
+            self.comboCurso.addItem(f"{c['nombre']} ({c['codigo']})", c['codigo'])
 
-        estudiantes_curso = []
-        if ids_en_curso:
-             # Si hay inscritos, mostramos SOLO esos
-             estudiantes_curso = [e for e in estudiantes if e['id'] in ids_en_curso and e.get('activo', True)]
-        else:
-             # Si NO hay nadie inscrito (o archivo no existe), mostramos TODOS los activos (Modo Demo/Fallback)
-             # Esto evita la tabla vacia que confunde al usuario
-             estudiantes_curso = [e for e in estudiantes if e.get('activo', True)]
-
-        self.tableEstudiantes.setRowCount(0)
+    def validar_fecha_y_cargar(self):
+        from PyQt6.QtCore import QDate
+        selected = self.calendarWidget.selectedDate()
+        today = QDate.currentDate()
         
-        for i, est in enumerate(estudiantes_curso):
-            self.tableEstudiantes.insertRow(i)
-            self.tableEstudiantes.setItem(i, 0, QTableWidgetItem(est['id']))
-            self.tableEstudiantes.setItem(i, 1, QTableWidgetItem(est['nombre']))
-            self.tableEstudiantes.setItem(i, 2, QTableWidgetItem(est['apellido']))
-            
-            # Buscar estado previo
-            estado_previo = self.db.obtener_asistencia_estudiante(est['id'], cod_curso, fecha)
-            item_estado = QTableWidgetItem(estado_previo if estado_previo else "-")
-            
-            if estado_previo == "Presente": item_estado.setBackground(QColor(200, 255, 200)) # Verde
-            elif estado_previo == "Ausente": item_estado.setBackground(QColor(255, 200, 200)) # Rojo
-            elif estado_previo == "Tardanza": item_estado.setBackground(QColor(255, 255, 200)) # Amarillo
-            
-            self.tableEstudiantes.setItem(i, 3, item_estado)
+        # 1. No futurol
+        if selected > today:
+            QMessageBox.warning(self, "Fecha Inválida", "No puedes marcar asistencia en fechas futuras.")
+            self.calendarWidget.setSelectedDate(today)
+            return
 
-    def cargar_estado_seleccionado(self):
-        row = self.tableEstudiantes.currentRow()
-        if row >= 0:
-            item_estado = self.tableEstudiantes.item(row, 3)
-            texto = item_estado.text()
-            
-            if texto == "Presente": self.rbPresente.setChecked(True)
-            elif texto == "Tardanza": self.rbTardanza.setChecked(True)
-            elif texto == "Ausente": self.rbAusente.setChecked(True)
-            else: self.rbPresente.setChecked(True) # Default
-
-    def guardar_asistencia(self):
-        idx_curso = self.comboCurso.currentIndex()
-        if idx_curso == -1: return
-        cod_curso = self.comboCurso.itemData(idx_curso)
-        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
-        
-        row = self.tableEstudiantes.currentRow()
-        if row == -1:
-            QMessageBox.warning(self, "Atención", "Seleccione un estudiante de la tabla para calificar")
+        # 2. No más de 2 días atrás (ej: hoy viernes, max miercoles)
+        if selected.daysTo(today) > 2:
+            QMessageBox.warning(self, "Fecha Bloqueada", "Solo se puede registrar asistencia de hasta 2 días atrás.")
+            self.calendarWidget.setSelectedDate(today) # O dejarla pero bloquear guardar? Mejor revertir.
             return
             
-        id_est = self.tableEstudiantes.item(row, 0).text()
-        nombre = self.tableEstudiantes.item(row, 1).text()
+        self.cargar_tabla_asistencia()
+
+    def cargar_tabla_asistencia(self):
+        idx = self.comboCurso.currentIndex()
+        if idx == -1: return
+        cod_curso = self.comboCurso.itemData(idx)
+        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
         
-        estado = "Presente"
-        if self.rbTardanza.isChecked(): estado = "Tardanza"
-        if self.rbAusente.isChecked(): estado = "Ausente"
+        # Usamos el nuevo metodo optimizado
+        matriculados = self.db.obtener_matriculados(cod_curso)
         
-        exito, msg = self.db.registrar_asistencia(id_est, cod_curso, fecha, estado)
+        self.tableAsistencia.setRowCount(0)
+        self.tableAsistencia.setSortingEnabled(False)
         
-        if exito:
-            # Actualizar solo la celda visualmente
-            item_st = QTableWidgetItem(estado)
-            if estado == "Presente": item_st.setBackground(QColor(200, 255, 200))
-            elif estado == "Ausente": item_st.setBackground(QColor(255, 200, 200))
-            elif estado == "Tardanza": item_st.setBackground(QColor(255, 255, 200))
+        for i, est in enumerate(matriculados):
+            self.tableAsistencia.insertRow(i)
             
-            self.tableEstudiantes.setItem(row, 3, item_st)
+            # ID, Nombre, Apellido
+            self.tableAsistencia.setItem(i, 0, QTableWidgetItem(est['id']))
+            self.tableAsistencia.setItem(i, 1, QTableWidgetItem(est['nombre']))
+            self.tableAsistencia.setItem(i, 2, QTableWidgetItem(est['apellido']))
             
-            # Feedback sutil en barra de estado o print, no popup molesto para flujo rapido
-            print(f"Asistencia guardada: {nombre} -> {estado}")
+            # Estado (Buscamos si ya tiene, sino Default "-")
+            estado = self.db.obtener_asistencia_estudiante(est['id'], cod_curso, fecha)
+            texto_estado = estado if estado else "-"
+            
+            item_estado = QTableWidgetItem(texto_estado)
+            item_estado.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._colorear_item(item_estado, texto_estado)
+            
+            self.tableAsistencia.setItem(i, 3, item_estado)
+
+    def cambiar_estado_celda(self, row, col):
+        if col == 3: # Columna Estado
+            item = self.tableAsistencia.item(row, col)
+            actual = item.text()
+            
+            # Ciclo de estados
+            nuevo = "-"
+            if actual == "-" or actual == "Ausente": new_st = "Presente"
+            elif actual == "Presente": new_st = "Tardanza"
+            elif actual == "Tardanza": new_st = "Ausente"
+            else: new_st = "Presente"
+            
+            item.setText(new_st)
+            self._colorear_item(item, new_st)
+
+    def _colorear_item(self, item, estado):
+        if estado == "Presente":
+            item.setBackground(QColor(46, 204, 113)) # Verde
+            item.setForeground(QColor("white"))
+        elif estado == "Tardanza":
+            item.setBackground(QColor(241, 196, 15)) # Amarillo
+            item.setForeground(QColor("black"))
+        elif estado == "Ausente":
+            item.setBackground(QColor(231, 76, 60)) # Rojo
+            item.setForeground(QColor("white"))
         else:
-            QMessageBox.critical(self, "Error", msg)
+            item.setBackground(QColor("white"))
+            item.setForeground(QColor("black"))
 
-# Matplotlib integration
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
+    def guardar_cambios(self):
+        idx = self.comboCurso.currentIndex()
+        if idx == -1: return
+        cod_curso = self.comboCurso.itemData(idx)
+        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
+        
+        count = 0
+        for i in range(self.tableAsistencia.rowCount()):
+            id_est = self.tableAsistencia.item(i, 0).text()
+            estado = self.tableAsistencia.item(i, 3).text()
+            
+            if estado in ["Presente", "Tardanza", "Ausente"]:
+                self.db.registrar_asistencia(id_est, cod_curso, fecha, estado)
+                count += 1
+                
+        QMessageBox.information(self, "Guardado", f"Se actualizaron {count} registros de asistencia.")
 
-class GraphWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.figure, self.ax = plt.subplots(figsize=(5, 3))
-        self.canvas = FigureCanvas(self.figure)
-        
-        layout = QVBoxLayout()
-        layout.addWidget(self.canvas)
-        self.setLayout(layout)
-        
-    def plot_grades(self, data):
-        """
-        Data format: {'Curso A': 15, 'Curso B': 12, ...}
-        """
-        self.ax.clear()
-        cursos = list(data.keys())
-        promedios = list(data.values())
-        
-        bars = self.ax.bar(cursos, promedios, color='#3498db')
-        self.ax.set_title("Promedio de Notas por Curso")
-        self.ax.set_ylim(0, 20)
-        self.ax.set_ylabel("Nota Promedio")
-        
-        # Rotar etiquetas si son muchas
-        plt.setp(self.ax.get_xticklabels(), rotation=15, ha="right")
-        self.figure.tight_layout()
-        self.canvas.draw()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

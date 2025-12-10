@@ -55,6 +55,19 @@ QHeaderView::section {
     border: none;
     font-weight: bold;
     color: #7f8c8d;
+}
+/* Calendar Fixes */
+QCalendarWidget QToolButton {
+    color: black;
+    background-color: transparent;
+}
+QCalendarWidget QMenu {
+    color: black;
+    background-color: white;
+}
+QCalendarWidget QSpinBox {
+    color: black;
+    background-color: white;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayoutMain">
