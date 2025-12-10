@@ -10,3 +10,4 @@ ID|NOMBRE|APELLIDO|CARRERA|NACIMIENTO|CORREO|ACTIVO
 2024010|Miguel|Ruiz|Marketing|2002-02-14|miguel.ruiz@mail.com|1
 2024011|Jhonnatan|Arrunategui|Ingeniería de Sistemas|1985-11-07|dick18_666@gmail.com|1
 2024012|Yomira|Pacho|Ingeniería de Sistemas|2000-01-10|pacho@gmail.com|1
+2024013|Alex Josue|Navas Robles|Administración|2000-01-19|navas@gmail.com.pe|1

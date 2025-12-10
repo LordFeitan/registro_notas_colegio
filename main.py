@@ -104,6 +104,11 @@ class MainApp(QMainWindow):
                 
             self.tableWidget.setItem(i, 7, item_estado)
 
+    def showEvent(self, event):
+        """Auto-refresca el dashboard cada vez que se muestra la ventana"""
+        super().showEvent(event)
+        self.cargar_resumen_dashboard()
+
     def abrir_registro_estudiantes(self):
         self.ventana_estudiantes = VentanaRegistroEstudiantes(self.db)
         self.ventana_estudiantes.show()
@@ -744,6 +749,14 @@ class VentanaAsistencia(QWidget):
         self.calendarWidget.setSelectedDate(QDate.currentDate())
         self.date_selected = QDate.currentDate().toString("yyyy-MM-dd")
         
+        # Configurar tabla para mejor visualización
+        self.tableAsistencia.setColumnWidth(0, 100)  # ID
+        self.tableAsistencia.setColumnWidth(1, 200)  # Nombres
+        self.tableAsistencia.setColumnWidth(2, 200)  # Apellidos
+        # La columna Estado ocupará el resto del espacio
+        self.tableAsistencia.horizontalHeader().setStretchLastSection(True)
+        self.tableAsistencia.setAlternatingRowColors(True)
+        
         self.cargar_cursos()
         
         # Conexiones
@@ -806,7 +819,7 @@ class VentanaAsistencia(QWidget):
             self.tableAsistencia.setItem(i, 2, QTableWidgetItem(est['apellido']))
             
             # Estado (Buscar si ya tiene)
-            estado = self.db.obtener_asistencia(est['id'], cod_curso, self.date_selected)
+            estado = self.db.obtener_asistencia_estudiante(est['id'], cod_curso, self.date_selected)
             texto_estado = estado if estado else "-"
             
             item_estado = QTableWidgetItem(texto_estado)
