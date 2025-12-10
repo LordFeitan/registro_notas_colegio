@@ -13,6 +13,9 @@ from PyQt6 import uic
 
 # Import models & data modules
 from model.estudiante import Estudiante
+from controllers.asistencia_controller import AsistenciaController
+from controllers.estudiante_controller import EstudianteController
+from controllers.nota_controller import NotaController
 from data.data_manager import DataManager
 
 # ==========================================
@@ -139,6 +142,7 @@ class VentanaRegistroEstudiantes(QWidget):
         super().__init__()
         uic.loadUi("ui/form_registro_estudiantes.ui", self)
         self.db = db_manager
+        self.controller = EstudianteController(db_manager)  # MVC: Controller
         
         self.btnGuardar.clicked.connect(self.registrar_estudiante)
         
@@ -197,7 +201,8 @@ class VentanaRegistroEstudiantes(QWidget):
             )
             
             if confirm == QMessageBox.StandardButton.Yes:
-                if self.db.eliminar_estudiante(id_est):
+                # MVC: Using Controller
+                if self.controller.eliminar_estudiante(id_est):
                     QMessageBox.information(self, "Eliminado", "Estudiante eliminado correctamente.")
                     self.limpiar_formulario()
                     self.cargar_tabla()
@@ -257,10 +262,10 @@ class VentanaRegistroEstudiantes(QWidget):
 
         nacimiento = fecha_birth.toString("yyyy-MM-dd")
 
-        # LOGICA UPDATE VS SAVE
+        # LOGICA UPDATE VS SAVE (MVC: Using Controller)
         if "Generado" in id_actual or not id_actual:
             # ES NUEVO
-            if self.db.registrar_estudiante(nombre, apellido, carrera, nacimiento, correo, activo):
+            if self.controller.crear_estudiante(nombre, apellido, carrera, nacimiento, correo, activo):
                 QMessageBox.information(self, "Exito", "Estudiante registrado correctamente")
                 self.limpiar_formulario()
                 self.cargar_tabla()
@@ -268,7 +273,7 @@ class VentanaRegistroEstudiantes(QWidget):
                 QMessageBox.critical(self, "Error", "Error al guardar estudiante")
         else:
             # ES EDICION
-            if self.db.actualizar_estudiante(id_actual, nombre, apellido, carrera, nacimiento, correo, activo):
+            if self.controller.actualizar_estudiante(id_actual, nombre, apellido, carrera, nacimiento, correo, activo):
                 QMessageBox.information(self, "Exito", "Estudiante actualizado correctamente")
                 self.limpiar_formulario()
                 self.cargar_tabla()
@@ -598,6 +603,7 @@ class VentanaNotas(QWidget):
         super().__init__()
         uic.loadUi("ui/form_notas.ui", self)
         self.db = db_manager
+        self.controller = NotaController(db_manager)  # MVC: Controller
         
         # Init
         self.cargar_cursos()
@@ -698,7 +704,8 @@ class VentanaNotas(QWidget):
         n2 = self.spinN2.value()
         n3 = self.spinN3.value()
         
-        if self.db.registrar_nota(id_est, cod_curso, n1, n2, n3):
+        # MVC: Using Controller
+        if self.controller.registrar_nota(id_est, cod_curso, n1, n2, n3):
             QMessageBox.information(self, "Exito", "Notas actualizadas correctamente.")
             self.cargar_tabla()
             self.limpiar_formulario()
@@ -724,31 +731,29 @@ class VentanaNotas(QWidget):
 
 
 
+
+
 class VentanaAsistencia(QWidget):
     def __init__(self, db_manager):
         super().__init__()
         uic.loadUi("ui/form_asistencia.ui", self)
         self.db = db_manager
+        self.controller = AsistenciaController(db_manager) # Instanciar Controlador
         
-        # UI Setup
-        # UI Setup
-        self.tableAsistencia.setColumnCount(4)
-        self.tableAsistencia.setHorizontalHeaderLabels(["ID", "Nombre", "Apellido", "Estado (Click para cambiar)"])
-        self.tableAsistencia.setColumnWidth(0, 80)
-        self.tableAsistencia.setColumnWidth(3, 150)
-        self.tableAsistencia.horizontalHeader().setStretchLastSection(True)
+        # Init
+        self.calendarWidget.setSelectedDate(QDate.currentDate())
+        self.date_selected = QDate.currentDate().toString("yyyy-MM-dd")
         
-        # Cargar Cursos
         self.cargar_cursos()
-        self.cargar_tabla_asistencia()
         
-        # Connections
-        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla_asistencia)
-        self.calendarWidget.selectionChanged.connect(self.validar_fecha_y_cargar)
+        # Conexiones
+        self.calendarWidget.selectionChanged.connect(self.on_date_changed)
+        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla)
+        self.tableAsistencia.cellClicked.connect(self.cambiar_estado_celda)
         self.btnGuardar.clicked.connect(self.guardar_cambios)
         
-        # Click en celda para cambiar estado (Ciclo: Presente -> Tardanza -> Ausente -> Presente)
-        self.tableAsistencia.cellClicked.connect(self.cambiar_estado_celda)
+        # Carga Inicial
+        self.cargar_tabla()
 
     def cargar_cursos(self):
         self.comboCurso.clear()
@@ -756,47 +761,52 @@ class VentanaAsistencia(QWidget):
         for c in cursos:
             self.comboCurso.addItem(f"{c['nombre']} ({c['codigo']})", c['codigo'])
 
-    def validar_fecha_y_cargar(self):
-        from PyQt6.QtCore import QDate
-        selected = self.calendarWidget.selectedDate()
-        today = QDate.currentDate()
+    def on_date_changed(self):
+        new_date = self.calendarWidget.selectedDate()
+        hoy = QDate.currentDate()
         
-        # 1. No futurol
-        if selected > today:
-            QMessageBox.warning(self, "Fecha Inválida", "No puedes marcar asistencia en fechas futuras.")
-            self.calendarWidget.setSelectedDate(today)
-            return
+        # Validación 1: No futuro
+        if new_date > hoy:
+             QMessageBox.warning(self, "Alerta", "No puedes registrar asistencia en fechas futuras.")
+             self.calendarWidget.setSelectedDate(hoy)
+             return
+        
+        # Validación 2: Max 2 dias atras
+        limit = hoy.addDays(-2)
+        if new_date < limit:
+             QMessageBox.warning(self, "Alerta", "Solo puedes editar asistencia de los últimos 2 días.")
+             self.calendarWidget.setSelectedDate(hoy)
+             return
 
-        # 2. No más de 2 días atrás (ej: hoy viernes, max miercoles)
-        if selected.daysTo(today) > 2:
-            QMessageBox.warning(self, "Fecha Bloqueada", "Solo se puede registrar asistencia de hasta 2 días atrás.")
-            self.calendarWidget.setSelectedDate(today) # O dejarla pero bloquear guardar? Mejor revertir.
-            return
-            
-        self.cargar_tabla_asistencia()
+        self.date_selected = new_date.toString("yyyy-MM-dd")
+        self.cargar_tabla()
 
-    def cargar_tabla_asistencia(self):
+    def cargar_tabla(self):
         idx = self.comboCurso.currentIndex()
         if idx == -1: return
         cod_curso = self.comboCurso.itemData(idx)
-        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
         
-        # Usamos el nuevo metodo optimizado
-        matriculados = self.db.obtener_matriculados(cod_curso)
+        # Estudiantes Matriculados
+        estudiantes = self.db.obtener_matriculados(cod_curso)
+        
+        # Asistencia existente (si hay)
+        # Optimizar esto en un futuro con un metodo en el controller que devuelva todo listo
+        # Por ahora mantenemos logica de DB directa para lectura, y controller para escritura
+        # Ojo: Para MVP MVC refactor, nos enfocamos en el "Guardar" que es el requerimiento principal
         
         self.tableAsistencia.setRowCount(0)
-        self.tableAsistencia.setSortingEnabled(False)
         
-        for i, est in enumerate(matriculados):
+        for i, est in enumerate(estudiantes):
             self.tableAsistencia.insertRow(i)
-            
-            # ID, Nombre, Apellido
+            # ID
             self.tableAsistencia.setItem(i, 0, QTableWidgetItem(est['id']))
+            # Nombre
             self.tableAsistencia.setItem(i, 1, QTableWidgetItem(est['nombre']))
+            # Apellido
             self.tableAsistencia.setItem(i, 2, QTableWidgetItem(est['apellido']))
             
-            # Estado (Buscamos si ya tiene, sino Default "-")
-            estado = self.db.obtener_asistencia_estudiante(est['id'], cod_curso, fecha)
+            # Estado (Buscar si ya tiene)
+            estado = self.db.obtener_asistencia(est['id'], cod_curso, self.date_selected)
             texto_estado = estado if estado else "-"
             
             item_estado = QTableWidgetItem(texto_estado)
@@ -846,7 +856,8 @@ class VentanaAsistencia(QWidget):
             estado = self.tableAsistencia.item(i, 3).text()
             
             if estado in ["Presente", "Tardanza", "Ausente"]:
-                self.db.registrar_asistencia(id_est, cod_curso, fecha, estado)
+                # MVC REFACTOR: Usar Controller
+                self.controller.registrar_asistencia(id_est, cod_curso, fecha, estado)
                 count += 1
                 
         QMessageBox.information(self, "Guardado", f"Se actualizaron {count} registros de asistencia.")
