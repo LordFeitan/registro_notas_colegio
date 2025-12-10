@@ -11,10 +11,12 @@ class DataManager:
         self.archivo_estudiantes = "estudiantes.txt"
         self.archivo_cursos = "cursos.txt"
         self.archivo_matriculas = "matriculas.txt"
+        self.archivo_asistencias = "asistencias.txt"
         self._inicializar_archivo_notas()
         self._inicializar_archivo_estudiantes()
         self._inicializar_archivo_cursos()
         self._inicializar_archivo_matriculas()
+        self._inicializar_archivo_asistencias()
 
     def _inicializar_archivo_notas(self):
         if not os.path.exists(self.archivo_notas):
@@ -61,6 +63,66 @@ class DataManager:
             if termino in c['codigo'].lower() or termino in c['nombre'].lower():
                 resultados.append(c)
         return resultados
+
+    # --- ASISTENCIA ---
+    def _inicializar_archivo_asistencias(self):
+        if not os.path.exists(self.archivo_asistencias):
+            with open(self.archivo_asistencias, 'w', encoding='utf-8') as f:
+                f.write("ID_ESTUDIANTE|CODIGO_CURSO|FECHA|ESTADO\n")
+
+    def registrar_asistencia(self, id_estudiante, cod_curso, fecha, estado):
+        registros = self.obtener_asistencias_raw()
+        encontrado = False
+        
+        for reg in registros:
+            if (reg['id'] == id_estudiante and 
+                reg['curso'] == cod_curso and 
+                reg['fecha'] == fecha):
+                reg['estado'] = estado
+                encontrado = True
+                break
+        
+        if not encontrado:
+            registros.append({
+                'id': id_estudiante,
+                'curso': cod_curso,
+                'fecha': fecha,
+                'estado': estado
+            })
+            
+        try:
+            with open(self.archivo_asistencias, 'w', encoding='utf-8') as f:
+                f.write("ID_ESTUDIANTE|CODIGO_CURSO|FECHA|ESTADO\n")
+                for r in registros:
+                    f.write(f"{r['id']}|{r['curso']}|{r['fecha']}|{r['estado']}\n")
+            return True, "Asistencia registrada"
+        except IOError:
+            return False, "Error al guardar asistencia"
+
+    def obtener_asistencias_raw(self):
+        data = []
+        if not os.path.exists(self.archivo_asistencias):
+            return data
+            
+        with open(self.archivo_asistencias, 'r', encoding='utf-8') as f:
+            for i, linea in enumerate(f):
+                if i == 0: continue
+                partes = linea.strip().split('|')
+                if len(partes) >= 4:
+                    data.append({
+                        'id': partes[0],
+                        'curso': partes[1],
+                        'fecha': partes[2],
+                        'estado': partes[3]
+                    })
+        return data
+
+    def obtener_asistencia_estudiante(self, id_est, cod_curso, fecha):
+        registros = self.obtener_asistencias_raw()
+        for r in registros:
+            if r['id'] == id_est and r['curso'] == cod_curso and r['fecha'] == fecha:
+                return r['estado']
+        return None
 
     # --- MATRICULAS ---
     def registrar_matricula(self, id_estudiante, cod_curso, fecha):

@@ -438,37 +438,138 @@ class VentanaAsistencia(QWidget):
         uic.loadUi("ui/form_asistencia.ui", self)
         self.db = db_manager
         
-        # Limpiar items de ejemplo del UI Designer
-        self.listEstudiantes.clear()
+        # UI Setup
+        self.tableEstudiantes.setColumnCount(4)
+        self.tableEstudiantes.setHorizontalHeaderLabels(["ID", "Nombre", "Apellido", "Estado Actual"])
+        self.tableEstudiantes.setColumnWidth(0, 80)
+        self.tableEstudiantes.setColumnWidth(3, 100)
+        self.tableEstudiantes.horizontalHeader().setStretchLastSection(True)
         
-        # Cargar estudiantes reales
-        self.cargar_lista_estudiantes()
+        # Cargar Cursos
+        self.cargar_cursos()
         
+        # Conexiones
+        self.comboCurso.currentIndexChanged.connect(self.cargar_tabla_estudiantes)
+        self.calendarWidget.selectionChanged.connect(self.cargar_tabla_estudiantes)
+        self.tableEstudiantes.itemSelectionChanged.connect(self.cargar_estado_seleccionado)
         self.btnMarcarAsistencia.clicked.connect(self.guardar_asistencia)
         
-    def cargar_lista_estudiantes(self):
-        estudiantes = self.db.obtener_estudiantes()
-        for est in estudiantes:
-            # Formato: "ID - Nombre Apellido"
-            texto = f"{est['id']} - {est['nombre']} {est['apellido']}"
-            self.listEstudiantes.addItem(texto)
+        # Cargar tabla inicial
+        self.cargar_tabla_estudiantes()
         
-    def guardar_asistencia(self):
+    def cargar_cursos(self):
+        self.comboCurso.clear()
+        cursos = self.db.obtener_cursos()
+        for c in cursos:
+            self.comboCurso.addItem(c['nombre'], c['codigo'])
+            
+    def cargar_tabla_estudiantes(self):
+        # Obtener filtros
+        idx_curso = self.comboCurso.currentIndex()
+        if idx_curso == -1: return
+        cod_curso = self.comboCurso.itemData(idx_curso)
         fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
+        
+        # Actualizar Label de fecha para claridad
+        self.labelCalendar.setText(f"Fecha Seleccionada: {fecha}")
+        
+        # Obtener Estudiantes ACTIVOS (Idealmente filtrados por matricula, pero usaremos todos por simplicidad o estudiantes matriculados si existiera esa logica facil)
+        # Para ser precisos con el requerimiento de "curso a que asisto", deberiamos usar matriculas.
+        # Filtremos por matricula:
+        matriculas = self.db.obtener_matriculas() # Esto devuelve diccionarios con nombres, no IDs...
+        # DataManager.obtener_matriculas devuelve nombres procesados, no raw data.
+        # Usaremos busqueda bruta en raw matriculas para obtener IDs
+        ids_matriculados = []
+        if os.path.exists(self.db.archivo_matriculas):
+             with open(self.db.archivo_matriculas, 'r', encoding='utf-8') as f:
+                for line in f:
+                    parts = line.split('|')
+                    if len(parts) >= 2 and parts[1] == cod_curso:
+                        ids_matriculados.append(parts[0])
+                        
+        estudiantes = self.db.obtener_estudiantes()
+        
+        # Logica de Filtrado:
+        # 1. Intentar buscar estudiantes matriculados en estecurso
+        ids_en_curso = []
+        if os.path.exists("matriculas.txt"):
+             with open("matriculas.txt", 'r', encoding='utf-8') as f:
+                for line in f:
+                    parts = line.split('|')
+                    if len(parts) >= 2 and parts[1] == cod_curso:
+                        ids_en_curso.append(parts[0])
+
+        estudiantes_curso = []
+        if ids_en_curso:
+             # Si hay inscritos, mostramos SOLO esos
+             estudiantes_curso = [e for e in estudiantes if e['id'] in ids_en_curso and e.get('activo', True)]
+        else:
+             # Si NO hay nadie inscrito (o archivo no existe), mostramos TODOS los activos (Modo Demo/Fallback)
+             # Esto evita la tabla vacia que confunde al usuario
+             estudiantes_curso = [e for e in estudiantes if e.get('activo', True)]
+
+        self.tableEstudiantes.setRowCount(0)
+        
+        for i, est in enumerate(estudiantes_curso):
+            self.tableEstudiantes.insertRow(i)
+            self.tableEstudiantes.setItem(i, 0, QTableWidgetItem(est['id']))
+            self.tableEstudiantes.setItem(i, 1, QTableWidgetItem(est['nombre']))
+            self.tableEstudiantes.setItem(i, 2, QTableWidgetItem(est['apellido']))
+            
+            # Buscar estado previo
+            estado_previo = self.db.obtener_asistencia_estudiante(est['id'], cod_curso, fecha)
+            item_estado = QTableWidgetItem(estado_previo if estado_previo else "-")
+            
+            if estado_previo == "Presente": item_estado.setBackground(QColor(200, 255, 200)) # Verde
+            elif estado_previo == "Ausente": item_estado.setBackground(QColor(255, 200, 200)) # Rojo
+            elif estado_previo == "Tardanza": item_estado.setBackground(QColor(255, 255, 200)) # Amarillo
+            
+            self.tableEstudiantes.setItem(i, 3, item_estado)
+
+    def cargar_estado_seleccionado(self):
+        row = self.tableEstudiantes.currentRow()
+        if row >= 0:
+            item_estado = self.tableEstudiantes.item(row, 3)
+            texto = item_estado.text()
+            
+            if texto == "Presente": self.rbPresente.setChecked(True)
+            elif texto == "Tardanza": self.rbTardanza.setChecked(True)
+            elif texto == "Ausente": self.rbAusente.setChecked(True)
+            else: self.rbPresente.setChecked(True) # Default
+
+    def guardar_asistencia(self):
+        idx_curso = self.comboCurso.currentIndex()
+        if idx_curso == -1: return
+        cod_curso = self.comboCurso.itemData(idx_curso)
+        fecha = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
+        
+        row = self.tableEstudiantes.currentRow()
+        if row == -1:
+            QMessageBox.warning(self, "Atención", "Seleccione un estudiante de la tabla para calificar")
+            return
+            
+        id_est = self.tableEstudiantes.item(row, 0).text()
+        nombre = self.tableEstudiantes.item(row, 1).text()
         
         estado = "Presente"
         if self.rbTardanza.isChecked(): estado = "Tardanza"
         if self.rbAusente.isChecked(): estado = "Ausente"
         
-        # Validar seleccion de lista
-        student_item = self.listEstudiantes.currentItem()
-        if not student_item:
-            QMessageBox.warning(self, "Atencion", "Seleccione un estudiante de la lista")
-            return
-            
-        estudiante_texto = student_item.text()
+        exito, msg = self.db.registrar_asistencia(id_est, cod_curso, fecha, estado)
         
-        QMessageBox.information(self, "Guardado", f"Asistencia {estado} registrada para {estudiante_texto} el {fecha}")
+        if exito:
+            # Actualizar solo la celda visualmente
+            item_st = QTableWidgetItem(estado)
+            if estado == "Presente": item_st.setBackground(QColor(200, 255, 200))
+            elif estado == "Ausente": item_st.setBackground(QColor(255, 200, 200))
+            elif estado == "Tardanza": item_st.setBackground(QColor(255, 255, 200))
+            
+            self.tableEstudiantes.setItem(row, 3, item_st)
+            
+            # Feedback sutil en barra de estado o print, no popup molesto para flujo rapido
+            print(f"Asistencia guardada: {nombre} -> {estado}")
+        else:
+            QMessageBox.critical(self, "Error", msg)
 
 # Matplotlib integration
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
