@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FormReportes</class>
+ <widget class="QWidget" name="FormReportes">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Generación de Reportes</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget {
+    background-color: #f5f6fa;
+    font-family: 'Segoe UI';
+}
+QLabel {
+    color: #2c3e50;
+    font-size: 14px;
+    font-weight: bold;
+}
+QLineEdit, QComboBox, QDateEdit {
+    padding: 8px;
+    border: 1px solid #dcdde1;
+    border-radius: 4px;
+    background-color: white;
+}
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background-color: #2980b9;
+}
+QTableWidget {
+    background-color: white;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    gridline-color: #ecf0f1;
+}
+QHeaderView::section {
+    background-color: #ecf0f1;
+    padding: 5px;
+    border: none;
+    font-weight: bold;
+    color: #7f8c8d;
+}
+QPushButton#btnPdf { background-color: #e74c3c; }
+QPushButton#btnCsv { background-color: #27ae60; }
+QPushButton#btnJson { background-color: #f39c12; }
+</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   
+   <!-- LEFT PANEL: CONFIG -->
+   <item>
+    <widget class="QFrame" name="frameConfig">
+     <property name="maximumSize">
+      <size>
+       <width>320</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayoutConfig">
+      <item>
+       <widget class="QLabel" name="labelTitle">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Configuración</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacer1">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <!-- Report Type -->
+      <item>
+       <widget class="QLabel" name="labelTipo">
+        <property name="text">
+         <string>Tipo de Reporte:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboTipoReporte">
+        <item>
+         <property name="text">
+          <string>Historial Académico</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Lista de Asistencia</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Padrón de Matrícula</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Rendimiento / Riesgo</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      
+      <item>
+       <spacer name="spacer2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <!-- DYNAMIC FILTERS AREA -->
+      <item>
+       <widget class="QGroupBox" name="groupFiltros">
+        <property name="title">
+         <string>Filtros</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayoutFiltros">
+         <item>
+          <widget class="QLabel" name="labelCurso">
+           <property name="text">
+            <string>Curso:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboCurso">
+           <property name="placeholderText">
+            <string>Seleccione curso...</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item>
+          <widget class="QLabel" name="labelEstudiante">
+           <property name="text">
+            <string>Estudiante:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboEstudiante">
+           <property name="placeholderText">
+            <string>Todos los estudiantes</string>
+           </property>
+          </widget>
+         </item>
+         
+         <item>
+          <widget class="QLabel" name="labelFecha">
+           <property name="text">
+            <string>Fecha (Opcional):</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDateEdit" name="dateFecha">
+           <property name="calendarPopup">
+            <bool>true</bool>
+           </property>
+           <property name="displayFormat">
+            <string>yyyy-MM-dd</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      
+      <item>
+       <spacer name="spacerBottom">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      
+      <!-- ACTIONS -->
+      <item>
+       <widget class="QPushButton" name="btnPreview">
+        <property name="text">
+         <string>👁️ Generar Vista Previa</string>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnPdf">
+        <property name="text">
+         <string>📄 Exportar PDF</string>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnCsv">
+        <property name="text">
+         <string>📈 Exportar CSV</string>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnJson">
+        <property name="text">
+         <string>JSON Exportar JSON</string>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   
+   <!-- RIGHT PANEL: PREVIEW -->
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayoutPreview">
+     <item>
+      <widget class="QLabel" name="labelPreviewTitle">
+       <property name="text">
+        <string>Vista Previa del Reporte</string>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTableWidget" name="tablePreview">
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

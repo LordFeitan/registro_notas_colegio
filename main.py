@@ -123,8 +123,8 @@ class MainApp(QMainWindow):
         self.ventana_asistencia.show()
 
     def mostrar_reportes(self):
-        QMessageBox.information(self, "Reportes", "Módulo de Reportes en construcción.")
-        self.ventana_estudiantes.show()
+        self.ventana_reportes = VentanaReportes(self.db)
+        self.ventana_reportes.show()
 
     def abrir_ventana_cursos(self):
         self.ventana_cursos = VentanaGestionCursos(self.db)
@@ -222,8 +222,8 @@ class VentanaRegistroEstudiantes(QWidget):
     def registrar_estudiante(self):
         # El ID ahora es read-only, pero si tiene texto, es edicion
         id_actual = self.inputID.text()
-        nombre = self.inputNombre.text().strip()
-        apellido = self.inputApellido.text().strip()
+        nombre = self.inputNombre.text().strip().title()
+        apellido = self.inputApellido.text().strip().title()
         carrera = self.comboCarrera.currentText()
         correo = self.inputCorreo.text().strip()
         activo = self.checkActivo.isChecked()
@@ -852,6 +852,216 @@ class VentanaAsistencia(QWidget):
         QMessageBox.information(self, "Guardado", f"Se actualizaron {count} registros de asistencia.")
 
 
+
+import csv
+import json
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+from PyQt6.QtGui import QTextDocument
+
+class VentanaReportes(QWidget):
+    def __init__(self, db_manager):
+        super().__init__()
+        uic.loadUi("ui/form_reportes.ui", self)
+        self.db = db_manager
+        
+        # UI Init
+        self.dateFecha.setDate(QDate.currentDate())
+        self.cargar_filtros()
+        
+        # Connections
+        self.comboTipoReporte.currentIndexChanged.connect(self.actualizar_visibilidad_filtros)
+        self.btnPreview.clicked.connect(self.generar_vista_previa)
+        self.btnPdf.clicked.connect(self.exportar_pdf)
+        self.btnCsv.clicked.connect(self.exportar_csv)
+        self.btnJson.clicked.connect(self.exportar_json)
+        
+        # Initial State
+        self.actualizar_visibilidad_filtros()
+
+    def cargar_filtros(self):
+        # Cursos
+        self.comboCurso.clear()
+        cursos = self.db.obtener_cursos()
+        for c in cursos:
+            self.comboCurso.addItem(f"{c['nombre']} ({c['codigo']})", c['codigo'])
+            
+        # Estudiantes (Todos)
+        self.comboEstudiante.clear()
+        self.comboEstudiante.addItem("Todos", None)
+        estudiantes = self.db.obtener_estudiantes(activos=True)
+        for est in estudiantes:
+            self.comboEstudiante.addItem(f"{est['nombre']} {est['apellido']}", est['id'])
+
+    def actualizar_visibilidad_filtros(self):
+        tipo = self.comboTipoReporte.currentText()
+        
+        # Default visibility
+        self.labelCurso.setVisible(True)
+        self.comboCurso.setVisible(True)
+        self.labelEstudiante.setVisible(True)
+        self.comboEstudiante.setVisible(True)
+        self.labelFecha.setVisible(False)
+        self.dateFecha.setVisible(False)
+        
+        if tipo == "Historial Académico":
+            self.labelCurso.setVisible(False)
+            self.comboCurso.setVisible(False)
+        elif tipo == "Lista de Asistencia":
+            self.labelEstudiante.setVisible(False)
+            self.comboEstudiante.setVisible(False)
+        elif tipo == "Padrón de Matrícula":
+            self.labelEstudiante.setVisible(False)
+            self.comboEstudiante.setVisible(False)
+        elif tipo == "Rendimiento / Riesgo":
+             self.labelCurso.setVisible(False) # Global
+             self.comboCurso.setVisible(False) 
+             self.labelEstudiante.setVisible(False)
+             self.comboEstudiante.setVisible(False)
+
+    def generar_vista_previa(self):
+        tipo = self.comboTipoReporte.currentText()
+        data = []
+        headers = []
+        
+        if tipo == "Historial Académico":
+            headers = ["Curso", "N1", "N2", "N3", "Promedio", "Estado"]
+            idx_est = self.comboEstudiante.currentIndex()
+            id_est = self.comboEstudiante.itemData(idx_est)
+            
+            if not id_est:
+                QMessageBox.warning(self, "Aviso", "Seleccione un estudiante")
+                return
+                
+            # Logica: Buscar notas de este estudiante en todos los cursos
+            notas_todas = self.db.obtener_todas_las_notas()
+            # Filtrar
+            notas_est = [n for n in notas_todas if n['id'] == id_est]
+            
+            for n in notas_est:
+                valid_prom = float(n['promedio']) if n['promedio'] else 0.0
+                estado = "Aprobado" if valid_prom >= 13 else "Desaprobado"
+                data.append([n['curso'], str(n['n1']), str(n['n2']), str(n['n3']), str(n['promedio']), estado])
+
+        elif tipo == "Lista de Asistencia":
+            headers = ["ID", "Nombre", "Fecha", "Estado"]
+            idx_cur = self.comboCurso.currentIndex()
+            cod_curso = self.comboCurso.itemData(idx_cur)
+            
+            asistencias = self.db.obtener_historial_asistencia(cod_curso)
+            estudiantes = {e['id']: f"{e['nombre']} {e['apellido']}" for e in self.db.obtener_estudiantes()}
+            
+            for a in asistencias:
+                nombre = estudiantes.get(a['id_est'], "Desconocido")
+                data.append([a['id_est'], nombre, a['fecha'], a['estado']])
+
+        elif tipo == "Padrón de Matrícula":
+            headers = ["ID", "Nombre", "Apellido", "Carrera", "Correo"]
+            idx_cur = self.comboCurso.currentIndex()
+            cod_curso = self.comboCurso.itemData(idx_cur)
+            
+            matriculados = self.db.obtener_matriculados(cod_curso)
+            for m in matriculados:
+                data.append([m['id'], m['nombre'], m['apellido'], m['carrera'], m['correo']])
+
+        elif tipo == "Rendimiento / Riesgo":
+            headers = ["ID", "Nombre", "Curso", "Promedio", "Estado"]
+            notas = self.db.obtener_todas_las_notas()
+            for n in notas:
+                 prom = float(n['promedio'])
+                 estado = "Riesgo" if prom < 13 else "OK"
+                 # Solo mostrar riesgo? O todo? Mostremos todo y ordenemos
+                 data.append([n['id'], n['nombre'], n['curso'], str(prom), estado])
+        
+        self._llenar_tabla(headers, data)
+
+    def _llenar_tabla(self, headers, data):
+        self.tablePreview.setColumnCount(len(headers))
+        self.tablePreview.setHorizontalHeaderLabels(headers)
+        self.tablePreview.setRowCount(0)
+        self.tablePreview.horizontalHeader().setStretchLastSection(True)
+        
+        for i, row in enumerate(data):
+            self.tablePreview.insertRow(i)
+            for j, val in enumerate(row):
+                self.tablePreview.setItem(i, j, QTableWidgetItem(str(val)))
+
+    def exportar_csv(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar CSV", "", "CSV Files (*.csv)")
+        if not path: return
+        
+        try:
+            with open(path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                # Headers
+                headers = [self.tablePreview.horizontalHeaderItem(i).text() for i in range(self.tablePreview.columnCount())]
+                writer.writerow(headers)
+                
+                # Data
+                for i in range(self.tablePreview.rowCount()):
+                    row = []
+                    for j in range(self.tablePreview.columnCount()):
+                        item = self.tablePreview.item(i, j)
+                        row.append(item.text() if item else "")
+                    writer.writerow(row)
+            QMessageBox.information(self, "Exito", "Reporte exportado a CSV")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
+    def exportar_json(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar JSON", "", "JSON Files (*.json)")
+        if not path: return
+        
+        data = []
+        headers = [self.tablePreview.horizontalHeaderItem(i).text() for i in range(self.tablePreview.columnCount())]
+        
+        for i in range(self.tablePreview.rowCount()):
+            obj = {}
+            for j, header in enumerate(headers):
+                 item = self.tablePreview.item(i, j)
+                 obj[header] = item.text() if item else ""
+            data.append(obj)
+            
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+            QMessageBox.information(self, "Exito", "Reporte exportado a JSON")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
+    def exportar_pdf(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar PDF", "", "PDF Files (*.pdf)")
+        if not path: return
+
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        printer.setOutputFileName(path)
+        
+        # Build HTML
+        html = "<h1>Reporte Generado</h1>"
+        html += f"<h3>Tipo: {self.comboTipoReporte.currentText()}</h3>"
+        html += "<table border='1' cellspacing='0' cellpadding='5' width='100%'>"
+        
+        # Headers
+        html += "<thead><tr>"
+        headers = [self.tablePreview.horizontalHeaderItem(i).text() for i in range(self.tablePreview.columnCount())]
+        for h in headers: html += f"<th style='background-color:#eee;'>{h}</th>"
+        html += "</tr></thead><tbody>"
+        
+        # Rows
+        for i in range(self.tablePreview.rowCount()):
+            html += "<tr>"
+            for j in range(self.tablePreview.columnCount()):
+                item = self.tablePreview.item(i, j)
+                val = item.text() if item else ""
+                html += f"<td>{val}</td>"
+            html += "</tr>"
+        html += "</tbody></table>"
+        
+        doc = QTextDocument()
+        doc.setHtml(html)
+        doc.print(printer)
+        
+        QMessageBox.information(self, "Exito", "Reporte explortado a PDF")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

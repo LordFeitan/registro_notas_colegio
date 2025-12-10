@@ -434,6 +434,27 @@ class DataManager:
 
         return data
 
+    def obtener_historial_asistencia(self, cod_curso):
+        """
+        Retorna lista de {id_est, fecha, estado} para un curso dado.
+        """
+        data = []
+        if not os.path.exists(self.archivo_asistencias):
+            return data
+            
+        with open(self.archivo_asistencias, 'r', encoding='utf-8') as f:
+            for line in f:
+                parts = line.strip().split('|')
+                if len(parts) >= 4:
+                    # ID_EST|COD_CURSO|FECHA|ESTADIO
+                    if parts[1] == cod_curso:
+                        data.append({
+                            "id_est": parts[0],
+                            "fecha": parts[2],
+                            "estado": parts[3]
+                        })
+        return data
+
     def registrar_nota(self, id_est, cod_curso, n1, n2, n3):
         """
         Guarda o actualiza las notas (UPSERT).
