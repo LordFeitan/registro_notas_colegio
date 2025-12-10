@@ -11,7 +11,6 @@ build/
 *.egg-info/
 
 # Project specific
-notas_db.txt
 install_log.txt
 .gemini/
 .agent/
